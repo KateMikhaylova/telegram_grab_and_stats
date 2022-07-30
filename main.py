@@ -12,7 +12,7 @@ if __name__ == '__main__':
 
     client = TelegramClient(phone, int(api_id), api_hash)
 
-    week_stats = WeekStats()
+    week_stats = WeekStats(client)
 
     with client:
         client.loop.run_until_complete(week_stats.get_channel())

@@ -1,8 +1,10 @@
 class ChatData:
-    def __init__(self, date_offset: int = 7):
+    def __init__(self, client: object, date_offset: int = 7):
         '''
+        :param client: <telethon.client.telegramclient.TelegramClient object at 0x000001D5C3B97E50>
         :param date_offset: number of days
         '''
+        self.client = client
         self.date_range = date_offset
         self.tg_chat = None
 
