@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 class ChatData:
     def __init__(self, client: object, date_offset: int = 7):
         '''
@@ -21,7 +23,9 @@ class ChatData:
         Sets list of 2 dates [start of searching, now] to self._date_range
         :param date_offset: number of days
         '''
-        self._date_range = list(date_start, date_now)
+        date_now = datetime.now(timezone.utc).date()
+        date_start = date_now - timedelta(days=date_offset)
+        self._date_range = [date_start, date_now]
 
     async def get_channel(self):
         '''
