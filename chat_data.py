@@ -1,9 +1,12 @@
 from datetime import datetime, timedelta, timezone
+from telethon.tl.types import InputPeerEmpty, Channel
+from telethon.tl.functions.messages import GetDialogsRequest
+
 
 class ChatData:
     def __init__(self, client: object, date_offset: int = 7):
         '''
-        :param client: <telethon.client.telegramclient.TelegramClient object at 0x000001D5C3B97E50>
+        :param client: <class 'telethon.client.telegramclient.TelegramClient'>
         :param date_offset: number of days
         '''
         self.client = client
@@ -31,7 +34,34 @@ class ChatData:
         '''
         Gets telegram chat and updates attribute self.tg_chat (<class 'telethon.tl.types.Channel'>)
         '''
-        self.tg_chat =
+        channels = []
+        result = await self.client(GetDialogsRequest(
+            offset_date=None,
+            offset_id=0,
+            offset_peer=InputPeerEmpty(),
+            limit=100,
+            hash=0
+        ))
+
+        for channel in result.chats:
+            if type(channel) == Channel:
+                channels.append(channel)
+
+        channels.sort(key=lambda c: c.title.lower())
+
+        print('\nКаналы:')
+        for num, channel in enumerate(channels, start=1):
+            print(str(num) + ' - ' + channel.title)
+
+        group_index = input('\nВведите номер канала: ')
+
+        while True:
+            if group_index.isdigit() and 1 <= int(group_index) <= len(channels):
+                self.tg_chat = channels[int(group_index) - 1]
+                break
+            else:
+                group_index = input('\nВведен неподходящий номер, попробуйте еще раз: ')
+
 
     async def get_all_data(self) -> list:
         '''
