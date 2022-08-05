@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from telethon.tl.types import InputPeerEmpty, Channel
 from telethon.tl.functions.messages import GetDialogsRequest
+from telethon.tl.functions.messages import GetHistoryRequest
 
 
 class ChatData:
@@ -68,7 +69,38 @@ class ChatData:
         Gets all data from the chat
         :return: list of all messages (objects)
         '''
-        return list(objects)
+
+        offset_msg = 0
+        limit_msg = 100
+
+        all_messages = []
+        total_messages = 0
+        total_count_limit = 0
+
+        while True:
+            history = await self.client(GetHistoryRequest(peer=self.tg_chat,
+                                                     offset_id=offset_msg,
+                                                     offset_date=None,
+                                                     add_offset=0,
+                                                     limit=limit_msg,
+                                                     max_id=0,
+                                                     min_id=0,
+                                                     hash=0
+                                                     ))
+            if not history.messages:
+                break
+            messages = history.messages
+            for message in messages:
+                if message.date.date() >= self.date_range[0]:
+                    all_messages.append(message)
+                else:
+                    return all_messages
+
+            offset_msg = messages[len(messages) - 1].id
+            total_messages = len(all_messages)
+            if total_count_limit != 0 and total_messages >= total_count_limit:
+                break
+        return all_messages
 
     async def get_comments_from_post(self, post) -> list:
         '''
