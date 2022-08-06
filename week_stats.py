@@ -13,7 +13,7 @@ class WeekStats(ChatData):
         :param all_data: all data from chat
         :return: top 3 commentators
         '''
-        return dict(user_id=[first_name, last_name, user_name, number_of_messages])
+        return dict(link=number_of_messages)
 
     def top_words(self, all_data: list, n_words: int = 7) -> dict:
         '''
@@ -28,7 +28,7 @@ class WeekStats(ChatData):
         :param all_data: all data from chat
         :return: stats from polls
         '''
-        return dict(link=[XX %, emote])
+        return dict(link=[XX%, emote])
 
     def stats_template(self, all_data: list) -> str:
         '''
