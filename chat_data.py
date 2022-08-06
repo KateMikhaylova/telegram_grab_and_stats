@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from telethon.tl.types import InputPeerEmpty, Channel
-from telethon.tl.functions.messages import GetDialogsRequest
-from telethon.tl.functions.messages import GetHistoryRequest
+from telethon.tl.functions.messages import GetDialogsRequest, GetHistoryRequest
 
 
 class ChatData:
@@ -63,19 +62,17 @@ class ChatData:
             else:
                 group_index = input('\nВведен неподходящий номер, попробуйте еще раз: ')
 
-
     async def get_all_data(self) -> list:
         '''
         Gets all data from the chat
         :return: list of all messages (objects)
         '''
+        broadcast_channel = self.tg_chat.broadcast
 
         offset_msg = 0
         limit_msg = 100
 
         all_messages = []
-        total_messages = 0
-        total_count_limit = 0
 
         while True:
             history = await self.client(GetHistoryRequest(peer=self.tg_chat,
@@ -87,26 +84,33 @@ class ChatData:
                                                      min_id=0,
                                                      hash=0
                                                      ))
+
             if not history.messages:
-                break
+                return all_messages
+
             messages = history.messages
+
             for message in messages:
                 if message.date.date() >= self.date_range[0]:
                     all_messages.append(message)
+                    if broadcast_channel and message.replies is not None and message.replies.replies:
+                        all_messages.extend(await self.get_comments_from_post(message.id))
                 else:
                     return all_messages
 
-            offset_msg = messages[len(messages) - 1].id
-            total_messages = len(all_messages)
-            if total_count_limit != 0 and total_messages >= total_count_limit:
-                break
-        return all_messages
+            offset_msg = messages[-1].id
 
-    async def get_comments_from_post(self, post) -> list:
+    async def get_comments_from_post(self, post_id: int) -> list:
         '''
+        Gets all comments from the particular channel post
+        :param post_id: channel post id
         :return: list of comments from post
         '''
-        return list(objects)
+        comments_list = []
+        async for message in self.client.iter_messages(self.tg_chat,
+                                                       reply_to=post_id):
+            comments_list.append(message)
+        return comments_list
 
     async def send_post(self, text: str, tg_chat: str = 'me'):
         '''
