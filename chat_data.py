@@ -93,9 +93,8 @@ class ChatData:
             for message in messages:
                 if message.date.date() >= self.date_range[0]:
                     all_messages.append(message)
-                    if broadcast_channel:
-                        if message.replies is not None and message.replies.replies:
-                            all_messages.extend(await self.get_comments_from_post(message.id))
+                    if broadcast_channel and message.replies is not None and message.replies.replies:
+                        all_messages.extend(await self.get_comments_from_post(message.id))
                 else:
                     return all_messages
 
