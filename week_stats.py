@@ -45,7 +45,7 @@ class WeekStats(ChatData):
         for position in top_dict:  # replaces ids to links
             top_dict[position][0] = self.get_links(top_dict[position][0])
 
-        result = {tuple(user[0]): user[1] for user in top_dict.values()}  # creates a new dict {tuple(links): number_od_messages}
+        result = {tuple(user[0]): user[1] for user in top_dict.values()}  # creates a new dict {tuple(links): number_of_messages}
 
         return result
 
