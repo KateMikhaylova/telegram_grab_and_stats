@@ -17,5 +17,5 @@ if __name__ == '__main__':
     with client:
         client.loop.run_until_complete(week_stats.get_channel())
         all_data = client.loop.run_until_complete(week_stats.get_all_data())
-        message = client.loop.run_until_complete(week_stats.stats_template(all_data))
+        message = week_stats.stats_template(all_data)
         client.loop.run_until_complete(week_stats.send_post(message))

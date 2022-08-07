@@ -150,4 +150,17 @@ class WeekStats(ChatData):
         top_3 = self.top_3(all_data)
         top_words = self.top_words(all_data)
         polls_stats = self.polls_stats(all_data)
-        return str
+        template_text = f'''
+🗓Итоги недели ({self.date_range[0]} - {self.date_range[1]})
+🏆 Топ комментаторов:
+🥇 {', '.join(sorted(top_3, key=lambda u: top_3[u])[2])}
+🥈 {', '.join(sorted(top_3, key=lambda u: top_3[u])[1])}
+🥉 {', '.join(sorted(top_3, key=lambda u: top_3[u])[0])}
+
+⌨ Популярные слова:
+{(', '.join(sorted(top_words, key=lambda w: top_words[w], reverse=True))).capitalize()}.\n'''
+
+        for poll in polls_stats:
+            template_text += f'\n📊В тесте({poll}) {polls_stats[poll][0]} ответили правильно {polls_stats[poll][1]}'
+
+        return template_text
