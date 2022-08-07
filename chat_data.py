@@ -118,3 +118,4 @@ class ChatData:
         :param text: text to send
         :param tg_chat: name of telegram chat where the message will be sent
         '''
+        await self.client.send_message(tg_chat, text)
