@@ -47,7 +47,7 @@ class WeekStats(ChatData):
 🥉 {', '.join(sorted(top_3, key=lambda u: top_3[u])[0])}
 
 ⌨ Популярные слова:
-{(', '.join(sorted(top_words, key=lambda w: top_words[w]))).capitalize()}.\n'''
+{(', '.join(sorted(top_words, key=lambda w: top_words[w], reverse=True))).capitalize()}.\n'''
 
         for poll in polls_stats:
             template_text += f'\n📊В тесте({poll}) {polls_stats[poll][0]} ответили правильно {polls_stats[poll][1]}'
