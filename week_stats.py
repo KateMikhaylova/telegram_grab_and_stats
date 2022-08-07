@@ -1,13 +1,11 @@
-from collections import defaultdict
-from telethon.tl.types import PeerUser
-from chat_data import ChatData
-from telethon.tl.types import PeerUser
 import re
-from collections import Counter
 import pymorphy2
 import nltk
-from nltk.corpus import stopwords
 
+from nltk.corpus import stopwords
+from collections import defaultdict, Counter
+from telethon.tl.types import PeerUser, MessageMediaPoll
+from chat_data import ChatData
 
 
 class WeekStats(ChatData):
@@ -118,7 +116,30 @@ class WeekStats(ChatData):
         :param all_data: all data from chat
         :return: stats from polls
         '''
-        return dict(link=[XX%, emote])
+        polls_stats_dict = {}
+
+        for message in all_data:
+            if type(
+                    message.media) == MessageMediaPoll and message.media.poll.quiz and message.media.results.results:  # checks if message is a poll and poll has the right answer and user already answered on poll
+
+                max_votes = 0  # most common option to choose
+
+                for option in message.media.results.results:
+                    if option.voters > max_votes:
+                        max_votes = option.voters
+
+                    if option.correct:  # checks if the option is the correct one
+                        votes = option.voters
+
+                        proportion = votes / message.media.results.total_voters
+                        correct_percent = f'{round(proportion * 100)}%'
+
+                        link = f'https://t.me/{self.tg_chat.username}/{message.id}'  # creates a link for post
+
+                polls_stats_dict[link] = [correct_percent, ('🙂' if proportion > 0.5
+                                                            else '😐' if proportion <= 0.5 and votes == max_votes
+                                                            else '☹')]
+        return polls_stats_dict
 
     def stats_template(self, all_data: list) -> str:
         '''
