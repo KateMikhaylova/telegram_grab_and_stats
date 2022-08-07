@@ -30,15 +30,13 @@ class WeekStats(ChatData):
         :param lemmatize: if True, words will be normalized, otherwise not
         :return: top of most common words in chat
         '''
-        messages = []
+        text = ''
         for message in all_data:
             if type(message.from_id) == PeerUser and message.message:
-                messages.append(message.message)
+                text += ' ' + message.message.lower()
 
-        text = ' '.join(messages).lower()
-
-        split_pattern = r'[а-яёА-ЯЁa-zA-Z-]+'
-        tokens = re.findall(split_pattern, text)
+        split_pattern = re.compile(r'[а-яёa-z]+(?:-[а-яёa-z]+)?', re.I)
+        tokens = split_pattern.findall(text)
 
         nltk.download('stopwords')
         all_stopwords = stopwords.words("russian") + stopwords.words("english")
