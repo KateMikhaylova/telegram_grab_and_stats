@@ -1,11 +1,14 @@
 import re
 import pymorphy2
 import nltk
+import asyncio
 
 from nltk.corpus import stopwords
 from collections import defaultdict, Counter
 from telethon.tl.types import PeerUser, MessageMediaPoll
 from chat_data import ChatData
+from threading import Thread
+from queue import Queue
 
 
 class WeekStats(ChatData):
@@ -24,11 +27,15 @@ class WeekStats(ChatData):
         user = await self.client.get_entity(user_id)
         return user
 
-    def top_3(self, all_data: list) -> dict:
-        '''
+    def top_3(self, all_data: list, storage, loop):
+        """
+        Calculates top 3 commentators.
         :param all_data: all data from chat
-        :return: top 3 commentators
-        '''
+        :param storage: container for returning value
+        :param loop: event loop
+        """
+        asyncio.set_event_loop(loop)
+
         message_counter = defaultdict(int)
 
         for message in all_data:
@@ -61,7 +68,7 @@ class WeekStats(ChatData):
         result = {tuple(user[0]): user[1] for user in
                   top_dict.values()}  # creates a new dict {tuple(links): number_of_messages}
 
-        return result
+        storage.put(result)
 
     def get_links(self, user_ids: list) -> list:
         '''
@@ -88,14 +95,13 @@ class WeekStats(ChatData):
                           + f'(tg://user?id={user_id})']
         return links
 
-    def top_words(self, all_data: list, add_stop_words: list = []) -> dict:
-        '''
+    def top_words(self, all_data: list, storage, add_stop_words: list = []):
+        """
+        Calculates most common words.
         :param all_data: all data from chat
-        :param n_words: amount of words for top
+        :param storage: container for returning value
         :param add_stop_words: list of additional words to be excluded from calculations
-        :param lemmatize: if True, words will be normalized, otherwise not
-        :return: top of most common words in chat
-        '''
+        """
         text = ''
         for message in all_data:
             if type(message.from_id) == PeerUser and message.message:
@@ -112,7 +118,7 @@ class WeekStats(ChatData):
             tokens = [token.replace('ё', 'е') for token in tokens if token not in all_stopwords]
             without_lemmatize = Counter(tokens)
             top_words = {word: quantity for word, quantity in without_lemmatize.most_common(self.n_words)}
-            return top_words
+            storage.put(top_words)
 
         morph = pymorphy2.MorphAnalyzer()
         pymorphed_tokens = []
@@ -121,18 +127,20 @@ class WeekStats(ChatData):
         pymorphed_tokens = [token for token in pymorphed_tokens if token not in all_stopwords]
         pymorphed = Counter(pymorphed_tokens)
         top_words = {word.replace('ё', 'е'): quantity for word, quantity in pymorphed.most_common(self.n_words)}
-        return top_words
+        storage.put(top_words)
 
-    def polls_stats(self, all_data: list) -> dict:
-        '''
+    def polls_stats(self, all_data: list, storage):
+        """
+        Gets polls stats.
         :param all_data: all data from chat
-        :return: stats from polls
-        '''
+        :param storage: container for returning value
+        """
         polls_stats_dict = {}
 
         for message in all_data:
-            if type(
-                    message.media) == MessageMediaPoll and message.media.poll.quiz and message.media.results.results:  # checks if message is a poll and poll has the right answer and user already answered on poll
+            if (type(message.media) == MessageMediaPoll
+                    and message.media.poll.quiz
+                    and message.media.results.results):  # checks if message is a poll and poll has the right answer and user already answered on poll
 
                 max_votes = 0  # most common option to choose
 
@@ -150,18 +158,32 @@ class WeekStats(ChatData):
 
                 polls_stats_dict[link] = [correct_percent, ('🙂' if proportion > 0.5
                                                             else '😐' if proportion <= 0.5 and votes == max_votes
-                else '☹')]
-        return polls_stats_dict
+                                                            else '☹')]
+        storage.put(polls_stats_dict)
 
-    def stats_template(self, all_data: list, week_stats: bool, month_stats: bool, year_stats: bool) -> str:
-        '''
-        Template for week results
+    def stats_template(self, all_data: list, week_stats: bool, month_stats: bool, year_stats: bool, loop) -> str:
+        """
+        Creates text for week results
         :param all_data: all data from chat
-        :return: text for week results
-        '''
-        top_3 = self.top_3(all_data)
-        top_words = self.top_words(all_data)
-        polls_stats = self.polls_stats(all_data)
+        :param week_stats: position of GUI 'box_week_statistic'
+        :param month_stats: position of GUI 'box_month_statistic'
+        :param year_stats: position of GUI 'box_year_statistic'
+        :param loop: event loop
+        """
+        storage1 = Queue()  # creates containers for storing values
+        storage2 = Queue()
+        storage3 = Queue()
+
+        threads = [Thread(target=self.top_3, args=[all_data, storage1, loop]),
+                   Thread(target=self.top_words, args=[all_data, storage2]),
+                   Thread(target=self.polls_stats, args=[all_data, storage3])]  # creating threads
+        [thread.start() for thread in threads]
+        [thread.join() for thread in threads]  # waits until all threads are done
+
+        top_3 = storage1.get()  # gets values from containers
+        top_words = storage2.get()
+        polls_stats = storage3.get()
+
         template_text = f'''
 🗓Итоги {'недели' if week_stats else 'месяца' if month_stats else 'года' if year_stats else 'периода'} ({self.date_range[0]} - {self.date_range[1]})
 🏆 Топ комментаторов:
