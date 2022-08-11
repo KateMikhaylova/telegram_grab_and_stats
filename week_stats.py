@@ -9,9 +9,9 @@ from chat_data import ChatData
 
 
 class WeekStats(ChatData):
-    def __init__(self, client, date_offset: int = 6, lemmatize: bool = True, n_words: int = 7,
-                 top_3_number_of_words: bool = True):
-        super().__init__(client, date_offset)
+    def __init__(self, client, lemmatize: bool = True, n_words: int = 7,
+                 top_3_number_of_words: bool = False):
+        super().__init__(client)
         self.lemmatize = lemmatize
         self.n_words = n_words
         self.top_3_number_of_words = top_3_number_of_words
@@ -110,7 +110,7 @@ class WeekStats(ChatData):
         all_stopwords.extend(add_stop_words)
 
         if not self.lemmatize:
-            tokens = [token for token in tokens if token not in all_stopwords]
+            tokens = [token.replace('ё', 'е') for token in tokens if token not in all_stopwords]
             without_lemmatize = Counter(tokens)
             top_words = {word: quantity for word, quantity in without_lemmatize.most_common(self.n_words)}
             return top_words
@@ -121,7 +121,7 @@ class WeekStats(ChatData):
             pymorphed_tokens.append(morph.parse(token)[0].normal_form)
         pymorphed_tokens = [token for token in pymorphed_tokens if token not in all_stopwords]
         pymorphed = Counter(pymorphed_tokens)
-        top_words = {word: quantity for word, quantity in pymorphed.most_common(self.n_words)}
+        top_words = {word.replace('ё', 'е'): quantity for word, quantity in pymorphed.most_common(self.n_words)}
         return top_words
 
     def polls_stats(self, all_data: list) -> dict:
@@ -163,7 +163,8 @@ class WeekStats(ChatData):
         top_3 = self.top_3(all_data)
         top_words = self.top_words(all_data)
         polls_stats = self.polls_stats(all_data)
-        template_text = f'''
+        try:
+            template_text = f'''
 🗓Итоги недели ({self.date_range[0]} - {self.date_range[1]})
 🏆 Топ комментаторов:
 🥇 {', '.join(first := sorted(top_3, key=lambda u: top_3[u])[2])
@@ -171,8 +172,8 @@ class WeekStats(ChatData):
        lambda pos: ' (' 
                    + str(top_3[pos]) 
                    + (' комментари' 
-                      + ('й' if (str(top_3[pos])[-1] == '1' and str(top_3[pos])[-2] != '1') 
-                         else 'я' if (str(top_3[pos])[-1] in ['2', '3', '4'] and str(top_3[pos])[-2] != '1') 
+                      + ('й' if (str(top_3[pos])[-1] == '1' and ('0' + str(top_3[pos]))[-2] != '1')
+                         else 'я' if (str(top_3[pos])[-1] in ['2', '3', '4'] and ('0' + str(top_3[pos]))[-2] != '1')
                          else 'ев') 
                       + ')') if self.top_3_number_of_words 
                          else '')(first)}
@@ -181,6 +182,8 @@ class WeekStats(ChatData):
 
 ⌨ Популярные слова:
 {(', '.join(sorted(top_words, key=lambda w: top_words[w], reverse=True)))}.\n'''
+        except Exception as ex:
+            print(ex)
 
         for poll in polls_stats:
             template_text += f'\n📊В [тесте]({poll}) {polls_stats[poll][0]} ответили правильно {polls_stats[poll][1]}'
