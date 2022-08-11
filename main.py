@@ -8,7 +8,7 @@ from telethon import TelegramClient
 
 
 config = configparser.ConfigParser()
-config.read('setting.ini')
+config.read('settings.ini')
 phone = config['Telegram']['phone']
 api_id = config['Telegram']['api_id']
 api_hash = config['Telegram']['api_hash']

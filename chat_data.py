@@ -106,8 +106,7 @@ class ChatData:
         await self.client.send_message(tg_chat, text, link_preview=False)
 
 
-def date_range(week: int = 0, month: int = 0, year: int = 0, week_stats: bool = False, month_stats: bool = False,
-               year_stats: bool = False):
+def date_range(week: int, month: int, year: int, week_stats: bool, month_stats: bool, year_stats: bool):
     """
     Sets list of 2 dates [start of searching, now]
     :param week: week number (0 - past week)
@@ -130,7 +129,8 @@ def date_range(week: int = 0, month: int = 0, year: int = 0, week_stats: bool = 
     current_year = (date_now - relativedelta(years=year)).year
 
     date_end = date_now - relativedelta(days=days + (1 if current_year % 4 == 0 and year_stats else 0),
-                                        weeks=week if week_stats else 0, months=month if month_stats else 0,
+                                        weeks=week if week_stats else 0,
+                                        months=month if month_stats else 0,
                                         years=year if year_stats else 0)
     date_start = date_end - relativedelta(days=-1 + (date_end.day if month_stats
                                                      else date_end.timetuple().tm_yday if year_stats
