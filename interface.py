@@ -7,7 +7,9 @@ from chat_data import date_range
 
 
 class StatThread(QtCore.QThread):
-    def __init__(self, client, loop, week_stats, buttons_channel_list, window):
+    any_signal = QtCore.pyqtSignal(int)
+
+    def __init__(self, client, loop, week_stats, buttons_channel_list, window, parent=None):
         """
         :param client: <class 'telethon.client.telegramclient.TelegramClient'>
         :param loop: <class 'asyncio.windows_events.ProactorEventLoop'>
@@ -15,12 +17,13 @@ class StatThread(QtCore.QThread):
         :param buttons_channel_list: list of channels in GUI
         :param window: main window interface <class 'interface.Window'>
         """
-        super().__init__()
+        super(StatThread, self).__init__(parent)
         self.client = client
         self.loop = loop
         self.week_stats = week_stats
         self.buttons_channel_list = buttons_channel_list
         self.window = window
+        self.is_running = True
 
     def run(self):
         for num, button in enumerate(self.buttons_channel_list):  # checks which channel was selected
@@ -29,7 +32,7 @@ class StatThread(QtCore.QThread):
 
         asyncio.set_event_loop(self.loop)  # sets the loop to current thread
 
-        all_data = self.loop.run_until_complete(self.week_stats.get_all_data())
+        all_data = self.loop.run_until_complete(self.week_stats.get_all_data(self.any_signal))
 
         if all_data:
             message = self.week_stats.stats_template(all_data,
@@ -41,13 +44,15 @@ class StatThread(QtCore.QThread):
             self.loop.run_until_complete(self.week_stats.send_post(
                 f'За период {" - ".join(list(map(lambda date: date.strftime("%Y/%m/%d"), self.week_stats.date_range)))} сообщений не было'))
 
-        self.week_stats.progress_bar.setValue(self.week_stats.progress_bar_range)  # fills the progress bar
-        self.window.launched = False  # allows to launch new thread
+        self.window.pushButton.setEnabled(True)
+
+    def stop(self):
+        self.is_running = False
+        self.terminate()
 
 
 class Window(object):
     def __init__(self):
-        self.launched = False  # 'True' if button was pressed, otherwise 'False'
         self.uploading = None
 
     def send_post(self, week_stats, buttons_channel_list, client, loop):
@@ -58,36 +63,41 @@ class Window(object):
         :param client: <class 'telethon.client.telegramclient.TelegramClient'>
         :param loop: <class 'asyncio.windows_events.ProactorEventLoop'>
         """
-        if not self.launched:  # checks if the launch button was pressed
-            self.launched = True
+        self.pushButton.setEnabled(False)
 
-            week_stats.n_words = self.box_n_words.value()
+        week_stats.n_words = self.box_n_words.value()
 
-            if self.box_top_3_number_of_words.isChecked():
-                week_stats.top_3_number_of_words = True
-            else:
-                week_stats.top_3_number_of_words = False
+        if self.box_top_3_number_of_words.isChecked():
+            week_stats.top_3_number_of_words = True
+        else:
+            week_stats.top_3_number_of_words = False
 
-            if self.box_lemmatize.isChecked():
-                week_stats.lemmatize = True
-            else:
-                week_stats.lemmatize = False
+        if self.box_lemmatize.isChecked():
+            week_stats.lemmatize = True
+        else:
+            week_stats.lemmatize = False
 
-            if self.box_custom_statistic.isChecked():
-                week_stats.date_range = [datetime(*self.box_custom_date_start.date().getDate()).date(), # sets custom date range
-                                         datetime(*self.box_custom_date_end.date().getDate()).date()]
-            else:
-                week_stats.date_range = date_range(self.box_week_number.currentIndex(),
-                                                   self.box_month_number.currentIndex(),
-                                                   self.box_year_number.currentIndex(),
-                                                   self.box_week_statistic.isChecked(),
-                                                   self.box_month_statistic.isChecked(),
-                                                   self.box_year_statistic.isChecked())
+        if self.box_custom_statistic.isChecked():
+            week_stats.date_range = [datetime(*self.box_custom_date_start.date().getDate()).date(), # sets custom date range
+                                     datetime(*self.box_custom_date_end.date().getDate()).date()]
+        else:
+            week_stats.date_range = date_range(self.box_week_number.currentIndex(),
+                                               self.box_month_number.currentIndex(),
+                                               self.box_year_number.currentIndex(),
+                                               self.box_week_statistic.isChecked(),
+                                               self.box_month_statistic.isChecked(),
+                                               self.box_year_statistic.isChecked())
 
-            week_stats.progress_bar = self.progressBar
+        self.progressBar.setValue(0)
+        progress_bar_range = (week_stats.date_range[1] - week_stats.date_range[0]).days
+        self.progressBar.setRange(0, progress_bar_range)
 
-            self.uploading = StatThread(client, loop, week_stats, buttons_channel_list, self)
-            self.uploading.start()
+        self.uploading = StatThread(client, loop, week_stats, buttons_channel_list, self, parent=None)
+        self.uploading.start()
+        self.uploading.any_signal.connect(self.progress_bar_counter)
+
+    def progress_bar_counter(self, counter):
+        self.progressBar.setValue(counter)
 
     def setupUi(self, window, client, loop):
         """

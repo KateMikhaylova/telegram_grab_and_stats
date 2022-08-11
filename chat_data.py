@@ -13,8 +13,6 @@ class ChatData:
         self.channels = None  # list of channels
         self.tg_chat = None  # selected channel
         self.date_range = None  # date interval [date_start, date_end]
-        self.progress_bar = None  # GUI progress bar
-        self.progress_bar_range = None  # number of days between tow dates date_start and date_end
 
     async def get_channel(self):
         """
@@ -35,15 +33,12 @@ class ChatData:
         channels.sort(key=lambda c: c.title.lower())
         self.channels = channels
 
-    async def get_all_data(self) -> list:
+    async def get_all_data(self, any_signal) -> list:
         """
         Gets all data from the chat
+        :param any_signal: value for GUI progress bar
         :return: list of all messages (objects)
         """
-        self.progress_bar_range = (self.date_range[1] - self.date_range[0]).days
-        self.progress_bar.setValue(0)
-        self.progress_bar.setRange(0, self.progress_bar_range)
-
         broadcast_channel = self.tg_chat.broadcast
 
         offset_msg = 0
@@ -74,7 +69,9 @@ class ChatData:
                 if message.date.date() >= self.date_range[0]:
                     if previous_date.day != message.date.date().day:
                         progress_bar_value += (previous_date - message.date.date()).days
-                        self.progress_bar.setValue(progress_bar_value - 1)
+
+                        any_signal.emit(progress_bar_value)  # Sends the value for the GUI progress bar
+
                         previous_date = message.date.date()
 
                     all_messages.append(message)
