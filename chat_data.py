@@ -4,7 +4,7 @@ from telethon.tl.functions.messages import GetDialogsRequest, GetHistoryRequest
 
 
 class ChatData:
-    def __init__(self, client: object, date_offset: int = 7):
+    def __init__(self, client: object, date_offset: int):
         '''
         :param client: <class 'telethon.client.telegramclient.TelegramClient'>
         :param date_offset: number of days
@@ -118,4 +118,4 @@ class ChatData:
         :param text: text to send
         :param tg_chat: name of telegram chat where the message will be sent
         '''
-        await self.client.send_message(tg_chat, text)
+        await self.client.send_message(tg_chat, text, link_preview=False)

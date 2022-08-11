@@ -9,6 +9,13 @@ from chat_data import ChatData
 
 
 class WeekStats(ChatData):
+    def __init__(self, client, date_offset: int = 6, lemmatize: bool = True, n_words: int = 7,
+                 top_3_number_of_words: bool = True):
+        super().__init__(client, date_offset)
+        self.lemmatize = lemmatize
+        self.n_words = n_words
+        self.top_3_number_of_words = top_3_number_of_words
+
     async def get_user_by_id(self, user_id: int) -> object:
         '''
         Gets information about the user with their id.
@@ -26,12 +33,14 @@ class WeekStats(ChatData):
         message_counter = defaultdict(int)
 
         for message in all_data:
-            if type(message.from_id) == PeerUser and (message.message or message.media):  # checks if message was sent by user and (message is not empty or message has media file)
+            if type(message.from_id) == PeerUser and (
+                    message.message or message.media):  # checks if message was sent by user and (message is not empty or message has media file)
                 message_counter[message.from_id.user_id] += 1  # counts messages for each user
 
         top_dict = {'top_1': [[], 0], 'top_2': [[], 0], 'top_3': [[], 0]}
 
-        for num, user in enumerate(sorted(message_counter, key=lambda u: message_counter[u], reverse=True)):  # fills in the dictionary top_dict
+        for num, user in enumerate(sorted(message_counter, key=lambda u: message_counter[u],
+                                          reverse=True)):  # fills in the dictionary top_dict
             if not top_dict['top_1'][0] or message_counter[user] == top_dict['top_1'][1]:
                 top_dict['top_1'][0] += [user]
                 if not top_dict['top_1'][1]:
@@ -50,7 +59,8 @@ class WeekStats(ChatData):
         for position in top_dict:  # replaces ids to links
             top_dict[position][0] = self.get_links(top_dict[position][0])
 
-        result = {tuple(user[0]): user[1] for user in top_dict.values()}  # creates a new dict {tuple(links): number_of_messages}
+        result = {tuple(user[0]): user[1] for user in
+                  top_dict.values()}  # creates a new dict {tuple(links): number_of_messages}
 
         return result
 
@@ -63,10 +73,13 @@ class WeekStats(ChatData):
         links = []
 
         for user_id in user_ids:
-            from_user = self.client.loop.run_until_complete(self.get_user_by_id(user_id)) # gets user information
+            from_user = self.client.loop.run_until_complete(self.get_user_by_id(user_id))  # gets user information
 
             if from_user.username is not None:
-                links += [f'@{from_user.username}']
+                links += [((from_user.first_name if from_user.first_name is not None else "")
+                           + " "
+                           + (from_user.last_name if from_user.last_name is not None else "")).strip()
+                          + f'(@{from_user.username})']
             else:
                 links += ['['
                           + ((from_user.first_name if from_user.first_name is not None else "")
@@ -76,7 +89,7 @@ class WeekStats(ChatData):
                           + f'(tg://user?id={user_id})']
         return links
 
-    def top_words(self, all_data: list, n_words: int = 7, add_stop_words: list = [], lemmatize: bool = True) -> dict:
+    def top_words(self, all_data: list, add_stop_words: list = []) -> dict:
         '''
         :param all_data: all data from chat
         :param n_words: amount of words for top
@@ -96,10 +109,10 @@ class WeekStats(ChatData):
         all_stopwords = stopwords.words("russian") + stopwords.words("english")
         all_stopwords.extend(add_stop_words)
 
-        if not lemmatize:
+        if not self.lemmatize:
             tokens = [token for token in tokens if token not in all_stopwords]
             without_lemmatize = Counter(tokens)
-            top_words = {word: quantity for word, quantity in without_lemmatize.most_common(n_words)}
+            top_words = {word: quantity for word, quantity in without_lemmatize.most_common(self.n_words)}
             return top_words
 
         morph = pymorphy2.MorphAnalyzer()
@@ -108,7 +121,7 @@ class WeekStats(ChatData):
             pymorphed_tokens.append(morph.parse(token)[0].normal_form)
         pymorphed_tokens = [token for token in pymorphed_tokens if token not in all_stopwords]
         pymorphed = Counter(pymorphed_tokens)
-        top_words = {word: quantity for word, quantity in pymorphed.most_common(n_words)}
+        top_words = {word: quantity for word, quantity in pymorphed.most_common(self.n_words)}
         return top_words
 
     def polls_stats(self, all_data: list) -> dict:
@@ -138,7 +151,7 @@ class WeekStats(ChatData):
 
                 polls_stats_dict[link] = [correct_percent, ('🙂' if proportion > 0.5
                                                             else '😐' if proportion <= 0.5 and votes == max_votes
-                                                            else '☹')]
+                else '☹')]
         return polls_stats_dict
 
     def stats_template(self, all_data: list) -> str:
@@ -153,12 +166,21 @@ class WeekStats(ChatData):
         template_text = f'''
 🗓Итоги недели ({self.date_range[0]} - {self.date_range[1]})
 🏆 Топ комментаторов:
-🥇 {', '.join(sorted(top_3, key=lambda u: top_3[u])[2])}
-🥈 {', '.join(sorted(top_3, key=lambda u: top_3[u])[1])}
-🥉 {', '.join(sorted(top_3, key=lambda u: top_3[u])[0])}
+🥇 {', '.join(first := sorted(top_3, key=lambda u: top_3[u])[2])
+    + (number_of_words := 
+       lambda pos: ' (' 
+                   + str(top_3[pos]) 
+                   + (' комментари' 
+                      + ('й' if (str(top_3[pos])[-1] == '1' and str(top_3[pos])[-2] != '1') 
+                         else 'я' if (str(top_3[pos])[-1] in ['2', '3', '4'] and str(top_3[pos])[-2] != '1') 
+                         else 'ев') 
+                      + ')') if self.top_3_number_of_words 
+                         else '')(first)}
+🥈 {', '.join(second := sorted(top_3, key=lambda u: top_3[u])[1]) + number_of_words(second)}
+🥉 {', '.join(third := sorted(top_3, key=lambda u: top_3[u])[0]) + number_of_words(third)}
 
 ⌨ Популярные слова:
-{(', '.join(sorted(top_words, key=lambda w: top_words[w], reverse=True))).capitalize()}.\n'''
+{(', '.join(sorted(top_words, key=lambda w: top_words[w], reverse=True)))}.\n'''
 
         for poll in polls_stats:
             template_text += f'\n📊В [тесте]({poll}) {polls_stats[poll][0]} ответили правильно {polls_stats[poll][1]}'
