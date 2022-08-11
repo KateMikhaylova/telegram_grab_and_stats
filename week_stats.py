@@ -162,8 +162,7 @@ class WeekStats(ChatData):
         top_3 = self.top_3(all_data)
         top_words = self.top_words(all_data)
         polls_stats = self.polls_stats(all_data)
-        try:
-            template_text = f'''
+        template_text = f'''
 🗓Итоги {'недели' if week_stats else 'месяца' if month_stats else 'года' if year_stats else 'периода'} ({self.date_range[0]} - {self.date_range[1]})
 🏆 Топ комментаторов:
 🥇 {', '.join(first := sorted(top_3, key=lambda u: top_3[u])[2])
@@ -181,8 +180,6 @@ class WeekStats(ChatData):
 
 ⌨ Популярные слова:
 {(', '.join(sorted(top_words, key=lambda w: top_words[w], reverse=True)))}.\n'''
-        except Exception as ex:
-            print(ex)
 
         for poll in polls_stats:
             template_text += f'\n📊В [тесте]({poll}) {polls_stats[poll][0]} ответили правильно {polls_stats[poll][1]}'
