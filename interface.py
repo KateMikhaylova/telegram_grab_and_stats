@@ -32,7 +32,10 @@ class StatThread(QtCore.QThread):
         all_data = self.loop.run_until_complete(self.week_stats.get_all_data())
 
         if all_data:
-            message = self.week_stats.stats_template(all_data)
+            message = self.week_stats.stats_template(all_data,
+                                                     self.window.box_week_statistic.isChecked(),
+                                                     self.window.box_month_statistic.isChecked(),
+                                                     self.window.box_year_statistic.isChecked())
             self.loop.run_until_complete(self.week_stats.send_post(message))
         else:
             self.loop.run_until_complete(self.week_stats.send_post(
