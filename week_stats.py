@@ -153,7 +153,7 @@ class WeekStats(ChatData):
                 else '☹')]
         return polls_stats_dict
 
-    def stats_template(self, all_data: list) -> str:
+    def stats_template(self, all_data: list, week_stats: bool, month_stats: bool, year_stats: bool) -> str:
         '''
         Template for week results
         :param all_data: all data from chat
@@ -164,7 +164,7 @@ class WeekStats(ChatData):
         polls_stats = self.polls_stats(all_data)
         try:
             template_text = f'''
-🗓Итоги недели ({self.date_range[0]} - {self.date_range[1]})
+🗓Итоги {'недели' if week_stats else 'месяца' if month_stats else 'года' if year_stats else 'периода'} ({self.date_range[0]} - {self.date_range[1]})
 🏆 Топ комментаторов:
 🥇 {', '.join(first := sorted(top_3, key=lambda u: top_3[u])[2])
     + (number_of_words := 
