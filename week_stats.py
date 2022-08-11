@@ -9,12 +9,11 @@ from chat_data import ChatData
 
 
 class WeekStats(ChatData):
-    def __init__(self, client, lemmatize: bool = True, n_words: int = 7,
-                 top_3_number_of_words: bool = False):
+    def __init__(self, client):
         super().__init__(client)
-        self.lemmatize = lemmatize
-        self.n_words = n_words
-        self.top_3_number_of_words = top_3_number_of_words
+        self.lemmatize = None
+        self.n_words = None
+        self.top_3_number_of_words = None
 
     async def get_user_by_id(self, user_id: int) -> object:
         '''
