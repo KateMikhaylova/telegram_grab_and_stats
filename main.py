@@ -8,7 +8,7 @@ from telethon import TelegramClient
 
 
 config = configparser.ConfigParser()
-config.read('settings.ini')
+config.read('keys.ini')
 phone = config['Telegram']['phone']
 api_id = config['Telegram']['api_id']
 api_hash = config['Telegram']['api_hash']
@@ -22,6 +22,6 @@ if __name__ == '__main__':
         app = QtWidgets.QApplication(sys.argv)
         window = QtWidgets.QWidget()
         ui = Window()
-        ui.setupUi(window, client, loop)
+        ui.setup(window, client, loop)
         window.show()
         sys.exit(app.exec_())

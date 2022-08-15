@@ -6,28 +6,20 @@ import asyncio
 from nltk.corpus import stopwords
 from collections import defaultdict, Counter
 from telethon.tl.types import PeerUser, MessageMediaPoll
-from chat_data import ChatData
+from chat_getter import ChatGetter
 from threading import Thread
 from queue import Queue
 
 
-class WeekStats(ChatData):
+class ChatStats(ChatGetter):
     def __init__(self, client):
         super().__init__(client)
         self.lemmatize = None
         self.n_words = None
         self.top_3_number_of_words = None
+        self.stop_words = None
 
-    async def get_user_by_id(self, user_id: int) -> object:
-        '''
-        Gets information about the user with their id.
-        :param user_id: User id
-        :return: user object by id <class 'telethon.tl.types.User'>
-        '''
-        user = await self.client.get_entity(user_id)
-        return user
-
-    def top_3(self, all_data: list, storage, loop):
+    def top_3(self, all_data: list, storage: Queue, loop):
         """
         Calculates top 3 commentators.
         :param all_data: all data from chat
@@ -70,32 +62,7 @@ class WeekStats(ChatData):
 
         storage.put(result)
 
-    def get_links(self, user_ids: list) -> list:
-        '''
-        Replaces user ids to links.
-        :param user_ids: list of user ids
-        :return: list of links for the user ids
-        '''
-        links = []
-
-        for user_id in user_ids:
-            from_user = self.client.loop.run_until_complete(self.get_user_by_id(user_id))  # gets user information
-
-            if from_user.username is not None:
-                links += [((from_user.first_name if from_user.first_name is not None else "")
-                           + " "
-                           + (from_user.last_name if from_user.last_name is not None else "")).strip()
-                          + f'(@{from_user.username})']
-            else:
-                links += ['['
-                          + ((from_user.first_name if from_user.first_name is not None else "")
-                             + " "
-                             + (from_user.last_name if from_user.last_name is not None else "")).strip()
-                          + ']'
-                          + f'(tg://user?id={user_id})']
-        return links
-
-    def top_words(self, all_data: list, storage, add_stop_words: list = []):
+    def top_words(self, all_data: list, storage: Queue, add_stop_words: list):
         """
         Calculates most common words.
         :param all_data: all data from chat
@@ -129,7 +96,7 @@ class WeekStats(ChatData):
         top_words = {word.replace('ё', 'е'): quantity for word, quantity in pymorphed.most_common(self.n_words)}
         storage.put(top_words)
 
-    def polls_stats(self, all_data: list, storage):
+    def polls_stats(self, all_data: list, storage: Queue):
         """
         Gets polls stats.
         :param all_data: all data from chat
@@ -175,7 +142,7 @@ class WeekStats(ChatData):
         storage3 = Queue()
 
         threads = [Thread(target=self.top_3, args=[all_data, storage1, loop]),
-                   Thread(target=self.top_words, args=[all_data, storage2]),
+                   Thread(target=self.top_words, args=[all_data, storage2, self.stop_words]),
                    Thread(target=self.polls_stats, args=[all_data, storage3])]  # creating threads
         [thread.start() for thread in threads]
         [thread.join() for thread in threads]  # waits until all threads are done
@@ -185,7 +152,7 @@ class WeekStats(ChatData):
         polls_stats = storage3.get()
 
         template_text = f'''
-🗓Итоги {'недели' if week_stats else 'месяца' if month_stats else 'года' if year_stats else 'периода'} ({self.date_range[0]} - {self.date_range[1]})
+🗓Итоги {'недели' if week_stats else 'месяца' if month_stats else 'года' if year_stats else 'периода'} ({self.date_range[0].strftime('%d/%m/%Y')} - {self.date_range[1].strftime('%d/%m/%Y')})
 🏆 Топ комментаторов:
 🥇 {', '.join(first := sorted(top_3, key=lambda u: top_3[u])[2])
     + (number_of_words := 
@@ -207,3 +174,11 @@ class WeekStats(ChatData):
             template_text += f'\n📊В [тесте]({poll}) {polls_stats[poll][0]} ответили правильно {polls_stats[poll][1]}'
 
         return template_text
+
+    async def send_post(self, text: str, tg_chat: str = 'me'):
+        """
+        Sends post to telegram chat
+        :param text: text to send
+        :param tg_chat: name of telegram chat where the message will be sent
+        """
+        await self.client.send_message(tg_chat, text, link_preview=False)
