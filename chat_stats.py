@@ -10,6 +10,13 @@ from chat_getter import ChatGetter
 from threading import Thread
 from queue import Queue
 
+import matplotlib.pyplot as plt
+import pandas as pd
+from PIL import Image
+import numpy as np
+from wordcloud import WordCloud, ImageColorGenerator
+
+import os
 
 class ChatStats(ChatGetter):
     def __init__(self, client):
@@ -84,6 +91,8 @@ class ChatStats(ChatGetter):
         if not self.lemmatize:
             tokens = [token.replace('ё', 'е') for token in tokens if token not in all_stopwords]
             without_lemmatize = Counter(tokens)
+            self.cloud_words = [(word.replace('ё', 'е'), quantity)
+                                for word, quantity in without_lemmatize.most_common(200)]
             top_words = {word: quantity for word, quantity in without_lemmatize.most_common(self.n_words)}
             storage.put(top_words)
 
@@ -93,8 +102,21 @@ class ChatStats(ChatGetter):
             pymorphed_tokens.append(morph.parse(token)[0].normal_form)
         pymorphed_tokens = [token for token in pymorphed_tokens if token not in all_stopwords]
         pymorphed = Counter(pymorphed_tokens)
+        self.cloud_words = [(word.replace('ё', 'е'), quantity) for word, quantity in pymorphed.most_common(200)]
         top_words = {word.replace('ё', 'е'): quantity for word, quantity in pymorphed.most_common(self.n_words)}
         storage.put(top_words)
+
+    def create_word_cloud(self):
+        df = pd.DataFrame(self.cloud_words, columns=['Word', 'Count'])
+        mask = np.array(Image.open(os.path.join('img', 'python_logo.png')))
+        word_cloud = WordCloud(background_color='black', mode='RGBA', mask=mask).generate_from_frequencies(
+            dict(zip(df['Word'].values, df['Count'].values)))
+
+        image_colors = ImageColorGenerator(mask)
+        plt.figure(figsize=[7, 7])
+        plt.imshow(word_cloud.recolor(color_func=image_colors), interpolation='bilinear')
+        plt.axis("off")
+        plt.savefig(os.path.join(os.getcwd(), 'img', f'1.png'))
 
     def polls_stats(self, all_data: list, storage: Queue):
         """
