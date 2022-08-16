@@ -11,9 +11,8 @@ from threading import Thread
 from queue import Queue
 
 import matplotlib.pyplot as plt
-import pandas as pd
 from PIL import Image
-import numpy as np
+from numpy import array
 from wordcloud import WordCloud, ImageColorGenerator
 
 import os
@@ -107,13 +106,12 @@ class ChatStats(ChatGetter):
         storage.put(top_words)
 
     def create_word_cloud(self):
-        df = pd.DataFrame(self.cloud_words, columns=['Word', 'Count'])
-        mask = np.array(Image.open(os.path.join('img', 'python_logo.png')))
+        mask = array(Image.open(os.path.join('img', 'python_logo.png')))
         word_cloud = WordCloud(background_color='black', mode='RGBA', mask=mask).generate_from_frequencies(
-            dict(zip(df['Word'].values, df['Count'].values)))
+            {word: count for word, count in self.cloud_words})
 
         image_colors = ImageColorGenerator(mask)
-        plt.figure(figsize=[7, 7])
+        plt.figure(figsize=[15, 15])
         plt.imshow(word_cloud.recolor(color_func=image_colors), interpolation='bilinear')
         plt.axis("off")
         plt.savefig(os.path.join(os.getcwd(), 'img', f'1.png'))
