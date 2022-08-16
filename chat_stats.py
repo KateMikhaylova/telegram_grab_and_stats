@@ -24,6 +24,7 @@ class ChatStats(ChatGetter):
         self.n_words = None
         self.top_3_number_of_words = None
         self.stop_words = None
+        self.word_cloud = None
 
     def top_3(self, all_data: list, storage: Queue, loop):
         """
@@ -90,30 +91,40 @@ class ChatStats(ChatGetter):
         if not self.lemmatize:
             tokens = [token.replace('ё', 'е') for token in tokens if token not in all_stopwords]
             without_lemmatize = Counter(tokens)
-            self.cloud_words = [(word.replace('ё', 'е'), quantity)
-                                for word, quantity in without_lemmatize.most_common(200)]
+
+            if self.word_cloud:
+                self.cloud_words = [(word.replace('ё', 'е'), quantity)
+                                    for word, quantity in without_lemmatize.most_common(200)]
+
             top_words = {word: quantity for word, quantity in without_lemmatize.most_common(self.n_words)}
             storage.put(top_words)
+        else:
+            morph = pymorphy2.MorphAnalyzer()
+            pymorphed_tokens = []
+            for token in tokens:
+                pymorphed_tokens.append(morph.parse(token)[0].normal_form)
+            pymorphed_tokens = [token for token in pymorphed_tokens if token not in all_stopwords]
+            pymorphed = Counter(pymorphed_tokens)
 
-        morph = pymorphy2.MorphAnalyzer()
-        pymorphed_tokens = []
-        for token in tokens:
-            pymorphed_tokens.append(morph.parse(token)[0].normal_form)
-        pymorphed_tokens = [token for token in pymorphed_tokens if token not in all_stopwords]
-        pymorphed = Counter(pymorphed_tokens)
-        self.cloud_words = [(word.replace('ё', 'е'), quantity) for word, quantity in pymorphed.most_common(200)]
-        top_words = {word.replace('ё', 'е'): quantity for word, quantity in pymorphed.most_common(self.n_words)}
-        storage.put(top_words)
+            if self.word_cloud:
+                self.cloud_words = [(word.replace('ё', 'е'), quantity) for word, quantity in pymorphed.most_common(200)]
+
+            top_words = {word.replace('ё', 'е'): quantity for word, quantity in pymorphed.most_common(self.n_words)}
+            storage.put(top_words)
+
+        if self.word_cloud:
+            self.create_word_cloud()
 
     def create_word_cloud(self):
         mask = array(Image.open(os.path.join('img', 'python_logo.png')))
-        word_cloud = WordCloud(background_color='black', mode='RGBA', mask=mask).generate_from_frequencies(
+        word_cloud = WordCloud(mask=mask).generate_from_frequencies(
             {word: count for word, count in self.cloud_words})
 
         image_colors = ImageColorGenerator(mask)
-        plt.figure(figsize=[15, 15])
+        plt.figure(frameon=False, figsize=[15, 15])
         plt.imshow(word_cloud.recolor(color_func=image_colors), interpolation='bilinear')
         plt.axis("off")
+        plt.subplots_adjust(left=0, bottom=0, right=1, top=1)
         plt.savefig(os.path.join(os.getcwd(), 'img', f'1.png'))
 
     def polls_stats(self, all_data: list, storage: Queue):
@@ -201,4 +212,10 @@ class ChatStats(ChatGetter):
         :param text: text to send
         :param tg_chat: name of telegram chat where the message will be sent
         """
-        await self.client.send_message(tg_chat, text, link_preview=False)
+
+        if self.word_cloud:
+            file = 'img/1.png'
+        else:
+            file = None
+
+        await self.client.send_message(tg_chat, text, link_preview=False, file=file)
