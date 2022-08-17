@@ -5,6 +5,7 @@ import asyncio
 import os
 import matplotlib.pyplot as plt
 
+from datetime import datetime
 from nltk.corpus import stopwords
 from collections import defaultdict, Counter
 from telethon.tl.types import PeerUser, MessageMediaPoll
@@ -14,6 +15,7 @@ from queue import Queue
 from PIL import Image
 from numpy import array
 from wordcloud import WordCloud, ImageColorGenerator
+from utils import date_range
 
 
 class ChatStats(ChatGetter):
@@ -153,7 +155,7 @@ class ChatStats(ChatGetter):
                         votes = option.voters
 
                         proportion = votes / message.media.results.total_voters
-                        correct_percent = round(proportion * 100)
+                        correct_percent = f'{round(proportion * 100)}%'
 
                         link = f'https://t.me/{self.tg_chat.username}/{message.id}'  # creates a link for post
 
@@ -266,9 +268,51 @@ class ChatStats(ChatGetter):
         :param tg_chat: name of telegram chat where the message will be sent
         """
 
-        if self.word_cloud:
+        if self.word_cloud and self.cloud_words:
             file = os.path.join('img', 'word_cloud.png')
         else:
             file = None
 
         await self.client.send_message(tg_chat, text, link_preview=False, file=file)
+
+    def options_update(self, n_words: int, top_3_number_of_words: bool, lemmatize: bool, average_polls_stats: bool,
+                       word_cloud: bool, stop_words: list):
+        """
+        Updates optional parameters.
+        :param n_words: number of words in top words list
+        :param top_3_number_of_words: top 3 number pf words checkbox position
+        :param lemmatize: lemmatizes checkbox position
+        :param word_cloud: word cloud checkbox position
+        :param stop_words: stopwords list
+        :return: None
+        """
+        self.n_words = n_words
+        self.top_3_number_of_words = top_3_number_of_words
+        self.lemmatize = lemmatize
+        self.average_polls_stats = average_polls_stats
+        self.word_cloud = word_cloud
+        self.stop_words = stop_words
+        self.cloud_words = None  # words for cloud words
+
+    def date_update(self, week_number: int, month_number: int, year_number: int,
+                    custom_date_start: list, custom_date_end: list,
+                    week_statistic: bool, month_statistic: bool, year_statistic: bool, custom_statistic: bool):
+        """
+        Updates the attribute self.date_range
+        :param week_number: week number
+        :param month_number: month number
+        :param year_number: year number
+        :param custom_date_start: custom date start - (year, month, day)
+        :param custom_date_end: custom date end - (year, month, day)
+        :param week_statistic: week statistic checkbox position
+        :param month_statistic: month statistic checkbox position
+        :param year_statistic: year statistic checkbox position
+        :param custom_statistic: custom statistic checkbox position
+        :return:
+        """
+        if custom_statistic:
+            self.date_range = [datetime(*custom_date_start).date(),
+                               datetime(*custom_date_end).date()]  # sets custom date range
+        else:
+            self.date_range = date_range(week_number, month_number, year_number,
+                                         week_statistic, month_statistic, year_statistic)

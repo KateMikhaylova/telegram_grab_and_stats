@@ -20,24 +20,22 @@ class Window(object):
         """
         self.pushButton.setEnabled(False)
 
-        # determines optional parameters
-        chat_stats.n_words = self.box_n_words.value()
-        chat_stats.top_3_number_of_words = self.box_top_3_number_of_words.isChecked()
-        chat_stats.lemmatize = self.box_lemmatize.isChecked()
-        chat_stats.word_cloud = self.box_word_cloud.isChecked()
-        chat_stats.average_polls_stats = self.box_average_polls_stats.isChecked()
-        chat_stats.stop_words = get_text_from_box(self.listWidget)
+        chat_stats.options_update(self.box_n_words.value(),
+                                  self.box_top_3_number_of_words.isChecked(),
+                                  self.box_lemmatize.isChecked(),
+                                  self.box_average_polls_stats.isChecked(),
+                                  self.box_word_cloud.isChecked(),
+                                  get_text_from_box(self.listWidget))
 
-        if self.box_custom_statistic.isChecked():
-            chat_stats.date_range = [datetime(*self.box_custom_date_start.date().getDate()).date(),
-                                     datetime(*self.box_custom_date_end.date().getDate()).date()]  # sets custom date range
-        else:
-            chat_stats.date_range = date_range(self.box_week_number.currentIndex(),
-                                               self.box_month_number.currentIndex(),
-                                               self.box_year_number.currentIndex(),
-                                               self.box_week_statistic.isChecked(),
-                                               self.box_month_statistic.isChecked(),
-                                               self.box_year_statistic.isChecked())
+        chat_stats.date_update(self.box_week_number.currentIndex(),
+                               self.box_month_number.currentIndex(),
+                               self.box_year_number.currentIndex(),
+                               self.box_custom_date_start.date().getDate(),
+                               self.box_custom_date_end.date().getDate(),
+                               self.box_week_statistic.isChecked(),
+                               self.box_month_statistic.isChecked(),
+                               self.box_year_statistic.isChecked(),
+                               self.box_custom_statistic.isChecked())
 
         self.progressBar.setValue(0)
         progress_bar_range = (chat_stats.date_range[1] - chat_stats.date_range[0]).days
