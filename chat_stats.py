@@ -93,8 +93,8 @@ class ChatStats(ChatGetter):
             without_lemmatize = Counter(tokens)
 
             if self.word_cloud:
-                self.cloud_words = [(word.replace('ё', 'е'), quantity)
-                                    for word, quantity in without_lemmatize.most_common(200)]
+                self.cloud_words = {word.replace('ё', 'е'): quantity
+                                    for word, quantity in without_lemmatize.most_common(200)}
 
             top_words = {word: quantity for word, quantity in without_lemmatize.most_common(self.n_words)}
             storage.put(top_words)
@@ -107,7 +107,7 @@ class ChatStats(ChatGetter):
             pymorphed = Counter(pymorphed_tokens)
 
             if self.word_cloud:
-                self.cloud_words = [(word.replace('ё', 'е'), quantity) for word, quantity in pymorphed.most_common(200)]
+                self.cloud_words = {word.replace('ё', 'е'): quantity for word, quantity in pymorphed.most_common(200)}
 
             top_words = {word.replace('ё', 'е'): quantity for word, quantity in pymorphed.most_common(self.n_words)}
             storage.put(top_words)
@@ -115,17 +115,20 @@ class ChatStats(ChatGetter):
         if self.word_cloud:
             self.create_word_cloud()
 
-    def create_word_cloud(self):
+    def create_word_cloud(self) -> None:
+        '''
+        Creates word cloud based on top 200 most common words in messages. Picture for word cloud mask may be changed
+        :return: None
+        '''
         mask = array(Image.open(os.path.join('img', 'python_logo.png')))
-        word_cloud = WordCloud(mask=mask).generate_from_frequencies(
-            {word: count for word, count in self.cloud_words})
+        word_cloud = WordCloud(mask=mask).generate_from_frequencies(self.cloud_words)
 
         image_colors = ImageColorGenerator(mask)
         plt.figure(frameon=False, figsize=[15, 15])
         plt.imshow(word_cloud.recolor(color_func=image_colors), interpolation='bilinear')
         plt.axis("off")
         plt.subplots_adjust(left=0, bottom=0, right=1, top=1)
-        plt.savefig(os.path.join(os.getcwd(), 'img', f'1.png'))
+        plt.savefig(os.path.join(os.getcwd(), 'img', f'word_cloud.png'))
 
     def polls_stats(self, all_data: list, storage: Queue):
         """
@@ -214,7 +217,7 @@ class ChatStats(ChatGetter):
         """
 
         if self.word_cloud:
-            file = 'img/1.png'
+            file = os.path.join('img', 'word_cloud.png')
         else:
             file = None
 
