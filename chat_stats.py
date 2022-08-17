@@ -160,7 +160,7 @@ class ChatStats(ChatGetter):
 
                 polls_stats_dict[link] = [correct_percent, ('🙂' if proportion > 0.5
                                                             else '😐' if proportion <= 0.5 and votes == max_votes
-                else '☹')]
+                                                            else '☹')]
         storage.put(polls_stats_dict)
 
     def stats_template(self, all_data: list, week_stats: bool, month_stats: bool, year_stats: bool, loop) -> str:
@@ -196,9 +196,8 @@ class ChatStats(ChatGetter):
                    + (' комментари'
                       + ('й' if (str(top_3[pos])[-1] == '1' and ('0' + str(top_3[pos]))[-2] != '1')
                          else 'я' if (str(top_3[pos])[-1] in ['2', '3', '4'] and ('0' + str(top_3[pos]))[-2] != '1')
-               else 'ев')
-                      + ')') if self.top_3_number_of_words
-       else '')(first)}
+                         else 'ев') + ')') if self.top_3_number_of_words
+                         else '')(first)}
 🥈 {', '.join(second := sorted(top_3, key=lambda u: top_3[u])[1]) + number_of_words(second)}
 🥉 {', '.join(third := sorted(top_3, key=lambda u: top_3[u])[0]) + number_of_words(third)}
 
