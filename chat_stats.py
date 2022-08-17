@@ -2,6 +2,8 @@ import re
 import pymorphy2
 import nltk
 import asyncio
+import os
+import matplotlib.pyplot as plt
 
 from nltk.corpus import stopwords
 from collections import defaultdict, Counter
@@ -9,13 +11,10 @@ from telethon.tl.types import PeerUser, MessageMediaPoll
 from chat_getter import ChatGetter
 from threading import Thread
 from queue import Queue
-
-import matplotlib.pyplot as plt
 from PIL import Image
 from numpy import array
 from wordcloud import WordCloud, ImageColorGenerator
 
-import os
 
 class ChatStats(ChatGetter):
     def __init__(self, client):
