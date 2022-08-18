@@ -132,7 +132,7 @@ class ChatStats(ChatGetter):
         plt.subplots_adjust(left=0, bottom=0, right=1, top=1)
         plt.savefig(os.path.join(os.getcwd(), 'img', f'word_cloud.png'))
 
-    def top_viewed_forwarded_replied(self, all_data: list):
+    def top_viewed_forwarded_replied(self, all_data: list, storage: Queue):
         '''
         Calculates most viewed, forwarded and replied posts
         :param all_data: all data from chat
@@ -184,34 +184,7 @@ class ChatStats(ChatGetter):
             'top_views': [[f'https://t.me/{self.tg_chat.username}/{message.id}' for message in max_viewed_msg],
                           max_views]}
 
-        # Формирование текста
-        if len(result['top_views'][0]) == 1:
-            text_views = f'''
-Самое большое количество просмотров ({result["top_views"][1]}) было у этого [поста]({result["top_views"][0][0]})\n'''
-        else:
-            text_views = f'Самое большое количество просмотров ({result["top_views"][1]}) было у этих постов:\n'
-            for i, post in enumerate(result['top_views'][0], start=1):
-                text_views += f'[{i}]({post})\n'
-
-        if len(result['top_fwd'][0]) == 1:
-            text_fwd = f'''
-Самое большое количество репостов ({result["top_fwd"][1]}) было у этого [поста]({result["top_fwd"][0][0]})\n'''
-        else:
-            text_fwd = f'Самое большое количество репостов ({result["top_fwd"][1]}) было у этих постов:\n'
-            for i, post in enumerate(result['top_fwd'][0], start=1):
-                text_fwd += f'[{i}]({post})\n'
-
-        if len(result['top_replies'][0]) == 0:
-            text_replies = ''
-        elif len(result['top_replies'][0]) == 1:
-            text_replies = f'''
-Самое большое количество комментариев ({result["top_replies"][1]}) было у этого [поста]({result["top_replies"][0][0]})\n'''
-        else:
-            text_replies = f'Самое большое количество комментариев ({result["top_replies"][1]}) было у этих постов:\n'
-            for i, post in enumerate(result['top_replies'][0], start=1):
-                text_replies += f'[{i}]({post})\n'
-
-        text_result = text_views + text_fwd + text_replies
+        storage.put(result)
 
     def polls_stats(self, all_data: list, storage: Queue):
         """
@@ -312,6 +285,37 @@ class ChatStats(ChatGetter):
 
         return text
 
+    def text_top_viewed_forwarded_replied(self, top_vfr: dict):
+        if len(top_vfr['top_views'][0]) == 1:
+            text_views = f'''
+        Самое большое количество просмотров ({top_vfr["top_views"][1]}) было у этого [поста]({top_vfr["top_views"][0][0]})\n'''
+        else:
+            text_views = f'Самое большое количество просмотров ({top_vfr["top_views"][1]}) было у этих постов:\n'
+            for i, post in enumerate(top_vfr['top_views'][0], start=1):
+                text_views += f'[{i}]({post})\n'
+
+        if len(top_vfr['top_fwd'][0]) == 1:
+            text_fwd = f'''
+        Самое большое количество репостов ({top_vfr["top_fwd"][1]}) было у этого [поста]({top_vfr["top_fwd"][0][0]})\n'''
+        else:
+            text_fwd = f'Самое большое количество репостов ({top_vfr["top_fwd"][1]}) было у этих постов:\n'
+            for i, post in enumerate(top_vfr['top_fwd'][0], start=1):
+                text_fwd += f'[{i}]({post})\n'
+
+        if len(top_vfr['top_replies'][0]) == 0:
+            text_replies = ''
+        elif len(top_vfr['top_replies'][0]) == 1:
+            text_replies = f'''
+        Самое большое количество комментариев ({top_vfr["top_replies"][1]}) было у этого [поста]({top_vfr["top_replies"][0][0]})\n'''
+        else:
+            text_replies = f'Самое большое количество комментариев ({top_vfr["top_replies"][1]}) было у этих постов:\n'
+            for i, post in enumerate(top_vfr['top_replies'][0], start=1):
+                text_replies += f'[{i}]({post})\n'
+
+        text = text_views + text_fwd + text_replies
+
+        return text
+
     def stats_template(self, all_data: list, week_stats: bool, month_stats: bool, year_stats: bool, loop) -> str:
         """
         Creates text for week results
@@ -324,21 +328,25 @@ class ChatStats(ChatGetter):
         storage1 = Queue()  # creates containers for storing values
         storage2 = Queue()
         storage3 = Queue()
+        storage4 = Queue()
 
         threads = [Thread(target=self.top_3, args=[all_data, storage1, loop]),
                    Thread(target=self.top_words, args=[all_data, storage2, self.stop_words]),
-                   Thread(target=self.polls_stats, args=[all_data, storage3])]  # creating threads
+                   Thread(target=self.polls_stats, args=[all_data, storage3]),
+                   Thread(target=self.top_viewed_forwarded_replied, args=[all_data, storage4])]  # creating threads
         [thread.start() for thread in threads]
         [thread.join() for thread in threads]  # waits until all threads are done
 
         top_3 = storage1.get()  # gets values from containers
         top_words = storage2.get()
         polls_stats = storage3.get()
+        top_viewed_forwarded_replied = storage4.get()
 
         template_text = (self.text_head(week_stats, month_stats, year_stats)
                          + self.text_top_3(top_3)
                          + self.text_top_words(top_words)
-                         + self.text_polls_stats(polls_stats, self.average_polls_stats))
+                         + self.text_polls_stats(polls_stats, self.average_polls_stats)
+                         + self.text_top_viewed_forwarded_replied(top_viewed_forwarded_replied))
 
         return template_text
 
