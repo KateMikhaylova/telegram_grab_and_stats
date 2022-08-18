@@ -136,7 +136,7 @@ class ChatStats(ChatGetter):
         '''
         Calculates most viewed, forwarded and replied posts
         :param all_data: all data from chat
-        :return:
+        :param storage: container for returning value
         '''
 
         max_views = 0
@@ -154,14 +154,14 @@ class ChatStats(ChatGetter):
                 # in the first pair of options first one takes posts if it is channel, second one posts if it is chat
                 # second pair of options takes posts with texts and also polls, which don't have message attribute
 
-                if message.views > max_views:
+                if message.views is not None and message.views > max_views:
                     max_views = message.views
                     max_viewed_msg.clear()
                     max_viewed_msg.append(message)
                 elif message.forwards == max_views:
                     max_viewed_msg.append(message)
 
-                if message.forwards > max_forwards:
+                if message.forwards is not None and message.forwards > max_forwards:
                     max_forwards = message.forwards
                     max_forwarded_msg.clear()
                     max_forwarded_msg.append(message)
@@ -219,6 +219,13 @@ class ChatStats(ChatGetter):
         storage.put(polls_stats_dict)
 
     def text_head(self, week_stats, month_stats, year_stats):
+        '''
+        Creates text head for template text
+        :param week_stats: if week period is chosen
+        :param month_stats: if month period is chosen
+        :param year_stats: if year period is chosen
+        :return: text head
+        '''
         text = '🗓Итоги '
 
         if week_stats:
@@ -233,6 +240,11 @@ class ChatStats(ChatGetter):
         return text
 
     def text_top_3(self, top_3):
+        '''
+        Creates text with top 3 participants based on quantity of comments for template text
+        :param top_3: dictionary with top participants
+        :return: text with top 3 participants
+        '''
         text = '🏆 Топ комментаторов:\n'
 
         def comment_word_ending(position):
@@ -257,11 +269,22 @@ class ChatStats(ChatGetter):
         return text
 
     def text_top_words(self, top_words):
+        '''
+        Creates text with top used words for template text
+        :param top_words: dictionary with top words
+        :return: text with top words
+        '''
         text = f"⌨ Популярные слова:\n{(', '.join(sorted(top_words, key=lambda w: top_words[w], reverse=True)))}.\n"
 
         return text
 
     def text_polls_stats(self, polls_stats, average_stats):
+        '''
+        Creates text with poll results for template text
+        :param polls_stats:
+        :param average_stats:
+        :return: text with poll results
+        '''
         text = ''
 
         def test_word_ending(polls_stats):
@@ -286,19 +309,28 @@ class ChatStats(ChatGetter):
         return text
 
     def text_top_viewed_forwarded_replied(self, top_vfr: dict):
-        if len(top_vfr['top_views'][0]) == 1:
+        '''
+        Creates text with top viewed forwarded and replied posts for template text
+        :param top_vfr: dictionary with top posts
+        :return: text with top posts
+        '''
+        if len(top_vfr['top_views'][0]) == 0:
+            text_views = ''
+        elif len(top_vfr['top_views'][0]) == 1:
             text_views = f'''
-        Самое большое количество просмотров ({top_vfr["top_views"][1]}) было у этого [поста]({top_vfr["top_views"][0][0]})\n'''
+\n👀 Самое большое количество просмотров ({top_vfr["top_views"][1]}) было у этого [поста]({top_vfr["top_views"][0][0]})\n'''
         else:
-            text_views = f'Самое большое количество просмотров ({top_vfr["top_views"][1]}) было у этих постов:\n'
+            text_views = f'👀 Самое большое количество просмотров ({top_vfr["top_views"][1]}) было у этих постов:\n'
             for i, post in enumerate(top_vfr['top_views'][0], start=1):
                 text_views += f'[{i}]({post})\n'
 
-        if len(top_vfr['top_fwd'][0]) == 1:
+        if len(top_vfr['top_fwd'][0]) == 0:
+            text_fwd = ''
+        elif len(top_vfr['top_fwd'][0]) == 1:
             text_fwd = f'''
-        Самое большое количество репостов ({top_vfr["top_fwd"][1]}) было у этого [поста]({top_vfr["top_fwd"][0][0]})\n'''
+📨 Самое большое количество репостов ({top_vfr["top_fwd"][1]}) было у этого [поста]({top_vfr["top_fwd"][0][0]})\n'''
         else:
-            text_fwd = f'Самое большое количество репостов ({top_vfr["top_fwd"][1]}) было у этих постов:\n'
+            text_fwd = f'📨 Самое большое количество репостов ({top_vfr["top_fwd"][1]}) было у этих постов:\n'
             for i, post in enumerate(top_vfr['top_fwd'][0], start=1):
                 text_fwd += f'[{i}]({post})\n'
 
@@ -306,9 +338,9 @@ class ChatStats(ChatGetter):
             text_replies = ''
         elif len(top_vfr['top_replies'][0]) == 1:
             text_replies = f'''
-        Самое большое количество комментариев ({top_vfr["top_replies"][1]}) было у этого [поста]({top_vfr["top_replies"][0][0]})\n'''
+💬 Самое большое количество комментариев ({top_vfr["top_replies"][1]}) было у этого [поста]({top_vfr["top_replies"][0][0]})\n'''
         else:
-            text_replies = f'Самое большое количество комментариев ({top_vfr["top_replies"][1]}) было у этих постов:\n'
+            text_replies = f'💬 Самое большое количество комментариев ({top_vfr["top_replies"][1]}) было у этих постов:\n'
             for i, post in enumerate(top_vfr['top_replies'][0], start=1):
                 text_replies += f'[{i}]({post})\n'
 
