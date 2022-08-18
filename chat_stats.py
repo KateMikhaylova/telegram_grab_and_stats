@@ -155,7 +155,7 @@ class ChatStats(ChatGetter):
                         votes = option.voters
 
                         proportion = votes / message.media.results.total_voters
-                        correct_percent = f'{round(proportion * 100)}%'
+                        correct_percent = round(proportion * 100)
 
                         link = f'https://t.me/{self.tg_chat.username}/{message.id}'  # creates a link for post
 
@@ -203,7 +203,7 @@ class ChatStats(ChatGetter):
         return text
 
     def text_top_words(self, top_words):
-        text = f"⌨ Популярные слова: {(', '.join(sorted(top_words, key=lambda w: top_words[w], reverse=True)))}.\n"
+        text = f"⌨ Популярные слова:\n{(', '.join(sorted(top_words, key=lambda w: top_words[w], reverse=True)))}.\n"
 
         return text
 
@@ -222,7 +222,7 @@ class ChatStats(ChatGetter):
             return text
 
         if average_stats and len(polls_stats) > 1:
-            text += f'\n📊 Было проведено {test_word_ending(polls_stats)} на которые в среднем было дано '
+            text += f'\n📊 Было проведено {test_word_ending(polls_stats)}, на которые в среднем было дано '
             text += f'{(percent := (round(sum(list(map(lambda poll: int(polls_stats[poll][0]), polls_stats)))/len(polls_stats))))}% правильных ответов '
             text += '🙂' if percent > 50 else '😐' if percent == 50 else '☹'
         else:
