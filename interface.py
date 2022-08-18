@@ -23,6 +23,7 @@ class Window(object):
         chat_stats.options_update(self.box_n_words.value(),
                                   self.box_top_3_number_of_words.isChecked(),
                                   self.box_lemmatize.isChecked(),
+                                  self.box_average_polls_stats.isChecked(),
                                   self.box_word_cloud.isChecked(),
                                   get_text_from_box(self.listWidget))
 
@@ -196,6 +197,10 @@ class Window(object):
         self.box_lemmatize.setChecked(True)
         self.box_lemmatize.setObjectName("checkBox_15")
         self.verticalLayout_3.addWidget(self.box_lemmatize)
+        self.box_average_polls_stats = QtWidgets.QCheckBox(window)
+        self.box_average_polls_stats.setChecked(False)
+        self.box_average_polls_stats.setObjectName("checkBox_15")
+        self.verticalLayout_3.addWidget(self.box_average_polls_stats)
         self.box_word_cloud = QtWidgets.QCheckBox(window)
         self.box_word_cloud.setChecked(False)
         self.box_word_cloud.setObjectName("checkBox_17")
@@ -311,6 +316,7 @@ class Window(object):
         self.label_7.setText(_translate("Form", "Исключаемые слова:"))
         self.box_top_3_number_of_words.setText(_translate("Form", "Количество слов в топ 3"))
         self.box_lemmatize.setText(_translate("Form", "Лематизация топ слов"))
+        self.box_average_polls_stats.setText(_translate("Form", "Средняя статистика тестов"))
         self.box_word_cloud.setText(_translate("Form", "Облако слов"))
         self.label_4.setText(_translate("Form", "Количество топ слов:"))
         self.pushButton_2.setText(_translate("Form", "Добавить"))

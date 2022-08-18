@@ -26,6 +26,7 @@ class ChatStats(ChatGetter):
         self.top_3_number_of_words = None
         self.stop_words = None
         self.word_cloud = None
+        self.average_polls_stats = None
 
     def top_3(self, all_data: list, storage: Queue, loop):
         """
@@ -154,7 +155,7 @@ class ChatStats(ChatGetter):
                         votes = option.voters
 
                         proportion = votes / message.media.results.total_voters
-                        correct_percent = f'{round(proportion * 100)}%'
+                        correct_percent = round(proportion * 100)
 
                         link = f'https://t.me/{self.tg_chat.username}/{message.id}'  # creates a link for post
 
@@ -162,6 +163,73 @@ class ChatStats(ChatGetter):
                                                             else '😐' if proportion <= 0.5 and votes == max_votes
                                                             else '☹')]
         storage.put(polls_stats_dict)
+
+    def text_head(self, week_stats, month_stats, year_stats):
+        text = '🗓Итоги '
+
+        if week_stats:
+            text += 'недели '
+        elif month_stats:
+            text += 'месяца '
+        elif year_stats:
+            text += 'года '
+
+        text += f"({self.date_range[0].strftime('%d/%m/%Y')} - {self.date_range[1].strftime('%d/%m/%Y')})\n\n"
+
+        return text
+
+    def text_top_3(self, top_3):
+        text = '🏆 Топ комментаторов:\n'
+
+        def comment_word_ending(position):
+            text = '(' + str(top_3[position])
+            text += ' комментари'
+
+            if str(top_3[position])[-1] == '1' and ('0' + str(top_3[position]))[-2] != '1':
+                text += 'й'
+            elif str(top_3[position])[-1] in ['2', '3', '4'] and ('0' + str(top_3[position]))[-2] != '1':
+                text += 'я'
+            else:
+                text += 'ев'
+
+            text += ')'
+
+            return text
+
+        text += f"🥇 {', '.join(first := sorted(top_3, key=lambda u: top_3[u])[2]) + (comment_word_ending(first) if self.top_3_number_of_words else '')}\n"
+        text += f"🥈 {', '.join(second := sorted(top_3, key=lambda u: top_3[u])[1]) + (comment_word_ending(second) if self.top_3_number_of_words else '')}\n"
+        text += f"🥉 {', '.join(third := sorted(top_3, key=lambda u: top_3[u])[0]) + (comment_word_ending(third) if self.top_3_number_of_words else '')}\n\n"
+
+        return text
+
+    def text_top_words(self, top_words):
+        text = f"⌨ Популярные слова:\n{(', '.join(sorted(top_words, key=lambda w: top_words[w], reverse=True)))}.\n"
+
+        return text
+
+    def text_polls_stats(self, polls_stats, average_stats):
+        text = ''
+
+        def test_word_ending(polls_stats):
+            text = str(len(polls_stats))
+            text += ' тест'
+
+            if str(len(polls_stats))[-1] in ['2', '3', '4'] and ('0' + str(len(polls_stats)))[-2] != '1':
+                text += 'а'
+            else:
+                text += 'ов'
+
+            return text
+
+        if average_stats and len(polls_stats) > 1:
+            text += f'\n📊 Было проведено {test_word_ending(polls_stats)}, на которые в среднем было дано '
+            text += f'{(percent := (round(sum(list(map(lambda poll: int(polls_stats[poll][0]), polls_stats)))/len(polls_stats))))}% правильных ответов '
+            text += '🙂' if percent > 50 else '😐' if percent == 50 else '☹'
+        else:
+            for poll in polls_stats:
+                text += f'\n📊В [тесте]({poll}) {polls_stats[poll][0]}% ответили правильно {polls_stats[poll][1]}'
+
+        return text
 
     def stats_template(self, all_data: list, week_stats: bool, month_stats: bool, year_stats: bool, loop) -> str:
         """
@@ -186,26 +254,10 @@ class ChatStats(ChatGetter):
         top_words = storage2.get()
         polls_stats = storage3.get()
 
-        template_text = f'''
-🗓Итоги {'недели' if week_stats else 'месяца' if month_stats else 'года' if year_stats else 'периода'} ({self.date_range[0].strftime('%d/%m/%Y')} - {self.date_range[1].strftime('%d/%m/%Y')})
-🏆 Топ комментаторов:
-🥇 {', '.join(first := sorted(top_3, key=lambda u: top_3[u])[2])
-    + (number_of_words :=
-       lambda pos: ' ('
-                   + str(top_3[pos])
-                   + (' комментари'
-                      + ('й' if (str(top_3[pos])[-1] == '1' and ('0' + str(top_3[pos]))[-2] != '1')
-                         else 'я' if (str(top_3[pos])[-1] in ['2', '3', '4'] and ('0' + str(top_3[pos]))[-2] != '1')
-                         else 'ев') + ')') if self.top_3_number_of_words
-                         else '')(first)}
-🥈 {', '.join(second := sorted(top_3, key=lambda u: top_3[u])[1]) + number_of_words(second)}
-🥉 {', '.join(third := sorted(top_3, key=lambda u: top_3[u])[0]) + number_of_words(third)}
-
-⌨ Популярные слова:
-{(', '.join(sorted(top_words, key=lambda w: top_words[w], reverse=True)))}.\n'''
-
-        for poll in polls_stats:
-            template_text += f'\n📊В [тесте]({poll}) {polls_stats[poll][0]} ответили правильно {polls_stats[poll][1]}'
+        template_text = (self.text_head(week_stats, month_stats, year_stats)
+                         + self.text_top_3(top_3)
+                         + self.text_top_words(top_words)
+                         + self.text_polls_stats(polls_stats, self.average_polls_stats))
 
         return template_text
 
@@ -223,7 +275,8 @@ class ChatStats(ChatGetter):
 
         await self.client.send_message(tg_chat, text, link_preview=False, file=file)
 
-    def options_update(self, n_words: int, top_3_number_of_words: bool, lemmatize: bool, word_cloud: bool, stop_words: list):
+    def options_update(self, n_words: int, top_3_number_of_words: bool, lemmatize: bool, average_polls_stats: bool,
+                       word_cloud: bool, stop_words: list):
         """
         Updates optional parameters.
         :param n_words: number of words in top words list
@@ -236,6 +289,7 @@ class ChatStats(ChatGetter):
         self.n_words = n_words
         self.top_3_number_of_words = top_3_number_of_words
         self.lemmatize = lemmatize
+        self.average_polls_stats = average_polls_stats
         self.word_cloud = word_cloud
         self.stop_words = stop_words
         self.cloud_words = None  # words for cloud words
