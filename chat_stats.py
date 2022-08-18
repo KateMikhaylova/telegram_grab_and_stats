@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from nltk.corpus import stopwords
 from collections import defaultdict, Counter
-from telethon.tl.types import PeerUser, MessageMediaPoll
+from telethon.tl.types import PeerUser, MessageMediaPoll, PeerChannel
 from chat_getter import ChatGetter
 from threading import Thread
 from queue import Queue
@@ -131,6 +131,87 @@ class ChatStats(ChatGetter):
         plt.axis("off")
         plt.subplots_adjust(left=0, bottom=0, right=1, top=1)
         plt.savefig(os.path.join(os.getcwd(), 'img', f'word_cloud.png'))
+
+    def top_viewed_forwarded_replied(self, all_data: list):
+        '''
+        Calculates most viewed, forwarded and replied posts
+        :param all_data: all data from chat
+        :return:
+        '''
+
+        max_views = 0
+        max_viewed_msg = []
+
+        max_forwards = 0
+        max_forwarded_msg = []
+
+        max_replied = 0
+        max_replied_msg = []
+
+        for message in all_data:
+            if (message.from_id is None or type(message.from_id) == PeerChannel) \
+                    and message.message or type(message.media) == MessageMediaPoll:
+                # in the first pair of options first one takes posts if it is channel, second one posts if it is chat
+                # second pair of options takes posts with texts and also polls, which don't have message attribute
+
+                if message.views > max_views:
+                    max_views = message.views
+                    max_viewed_msg.clear()
+                    max_viewed_msg.append(message)
+                elif message.forwards == max_views:
+                    max_viewed_msg.append(message)
+
+                if message.forwards > max_forwards:
+                    max_forwards = message.forwards
+                    max_forwarded_msg.clear()
+                    max_forwarded_msg.append(message)
+                elif message.forwards == max_forwards:
+                    max_forwarded_msg.append(message)
+
+                if message.replies:  # comments in channel may be restricted
+                    if message.replies.replies > max_replied:
+                        max_replied = message.replies.replies
+                        max_replied_msg.clear()
+                        max_replied_msg.append(message)
+                    elif message.replies.replies == max_replied:
+                        max_replied_msg.append(message)
+
+        result = {
+            'top_replies': [[f'https://t.me/{self.tg_chat.username}/{message.id}' for message in max_replied_msg],
+                            max_replied],
+            'top_fwd': [[f'https://t.me/{self.tg_chat.username}/{message.id}' for message in max_forwarded_msg],
+                        max_forwards],
+            'top_views': [[f'https://t.me/{self.tg_chat.username}/{message.id}' for message in max_viewed_msg],
+                          max_views]}
+
+        # Формирование текста
+        if len(result['top_views'][0]) == 1:
+            text_views = f'''
+Самое большое количество просмотров ({result["top_views"][1]}) было у этого [поста]({result["top_views"][0][0]})\n'''
+        else:
+            text_views = f'Самое большое количество просмотров ({result["top_views"][1]}) было у этих постов:\n'
+            for i, post in enumerate(result['top_views'][0], start=1):
+                text_views += f'[{i}]({post})\n'
+
+        if len(result['top_fwd'][0]) == 1:
+            text_fwd = f'''
+Самое большое количество репостов ({result["top_fwd"][1]}) было у этого [поста]({result["top_fwd"][0][0]})\n'''
+        else:
+            text_fwd = f'Самое большое количество репостов ({result["top_fwd"][1]}) было у этих постов:\n'
+            for i, post in enumerate(result['top_fwd'][0], start=1):
+                text_fwd += f'[{i}]({post})\n'
+
+        if len(result['top_replies'][0]) == 0:
+            text_replies = ''
+        elif len(result['top_replies'][0]) == 1:
+            text_replies = f'''
+Самое большое количество комментариев ({result["top_replies"][1]}) было у этого [поста]({result["top_replies"][0][0]})\n'''
+        else:
+            text_replies = f'Самое большое количество комментариев ({result["top_replies"][1]}) было у этих постов:\n'
+            for i, post in enumerate(result['top_replies'][0], start=1):
+                text_replies += f'[{i}]({post})\n'
+
+        text_result = text_views + text_fwd + text_replies
 
     def polls_stats(self, all_data: list, storage: Queue):
         """
