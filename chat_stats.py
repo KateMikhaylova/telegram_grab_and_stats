@@ -25,6 +25,7 @@ class ChatStats(ChatGetter):
         self.n_words = None
         self.top_3_number_of_words = None
         self.stop_words = None
+        self.top_posts_stats = None
         self.word_cloud = None
         self.average_polls_stats = None
 
@@ -117,11 +118,11 @@ class ChatStats(ChatGetter):
         if self.word_cloud:
             self.create_word_cloud()
 
-    def create_word_cloud(self) -> None:
-        '''
+    def create_word_cloud(self):
+        """
         Creates word cloud based on top 200 most common words in messages. Picture for word cloud mask may be changed
         :return: None
-        '''
+        """
         mask = array(Image.open(os.path.join('img', 'python_logo.png')))
         word_cloud = WordCloud(mask=mask).generate_from_frequencies(self.cloud_words)
 
@@ -133,11 +134,11 @@ class ChatStats(ChatGetter):
         plt.savefig(os.path.join(os.getcwd(), 'img', f'word_cloud.png'))
 
     def top_viewed_forwarded_replied(self, all_data: list, storage: Queue):
-        '''
+        """
         Calculates most viewed, forwarded and replied posts
         :param all_data: all data from chat
         :param storage: container for returning value
-        '''
+        """
 
         max_views = 0
         max_viewed_msg = []
@@ -218,14 +219,14 @@ class ChatStats(ChatGetter):
                                                             else '☹')]
         storage.put(polls_stats_dict)
 
-    def text_head(self, week_stats, month_stats, year_stats):
-        '''
+    def text_head(self, week_stats: bool, month_stats: bool, year_stats: bool) -> str:
+        """
         Creates text head for template text
         :param week_stats: if week period is chosen
         :param month_stats: if month period is chosen
         :param year_stats: if year period is chosen
         :return: text head
-        '''
+        """
         text = '🗓Итоги '
 
         if week_stats:
@@ -239,12 +240,12 @@ class ChatStats(ChatGetter):
 
         return text
 
-    def text_top_3(self, top_3):
-        '''
+    def text_top_3(self, top_3: dict) -> str:
+        """
         Creates text with top 3 participants based on quantity of comments for template text
         :param top_3: dictionary with top participants
         :return: text with top 3 participants
-        '''
+        """
         text = '🏆 Топ комментаторов:\n'
 
         def comment_word_ending(position):
@@ -268,38 +269,41 @@ class ChatStats(ChatGetter):
 
         return text
 
-    def text_top_words(self, top_words):
-        '''
+    def text_top_words(self, top_words: dict) -> str:
+        """
         Creates text with top used words for template text
         :param top_words: dictionary with top words
         :return: text with top words
-        '''
+        """
         text = f"⌨ Популярные слова:\n{(', '.join(sorted(top_words, key=lambda w: top_words[w], reverse=True)))}.\n"
 
         return text
 
-    def text_polls_stats(self, polls_stats, average_stats):
-        '''
+    def text_polls_stats(self, polls_stats: dict) -> str:
+        """
         Creates text with poll results for template text
-        :param polls_stats:
-        :param average_stats:
+        :param polls_stats: dictionary with polls stats
         :return: text with poll results
-        '''
+        """
         text = ''
 
-        def test_word_ending(polls_stats):
-            text = str(len(polls_stats))
+        def test_word_ending(number: str) -> str:
+            """
+            :param number: quantity of polls
+            :return: word with correct ending
+            """
+            text = number
             text += ' тест'
 
-            if str(len(polls_stats))[-1] in ['2', '3', '4'] and ('0' + str(len(polls_stats)))[-2] != '1':
+            if number[-1] in ['2', '3', '4'] and ('0' + number)[-2] != '1':
                 text += 'а'
             else:
                 text += 'ов'
 
             return text
 
-        if average_stats and len(polls_stats) > 1:
-            text += f'\n📊 Было проведено {test_word_ending(polls_stats)}, на которые в среднем было дано '
+        if self.average_polls_stats and len(polls_stats) > 1:
+            text += f'\n📊 Было проведено {test_word_ending(str(len(polls_stats)))}, на которые в среднем было дано '
             text += f'{(percent := (round(sum(list(map(lambda poll: int(polls_stats[poll][0]), polls_stats)))/len(polls_stats))))}% правильных ответов '
             text += '🙂' if percent > 50 else '😐' if percent == 50 else '☹'
         else:
@@ -308,12 +312,12 @@ class ChatStats(ChatGetter):
 
         return text
 
-    def text_top_viewed_forwarded_replied(self, top_vfr: dict):
-        '''
+    def text_top_viewed_forwarded_replied(self, top_vfr: dict) -> str:
+        """
         Creates text with top viewed forwarded and replied posts for template text
         :param top_vfr: dictionary with top posts
         :return: text with top posts
-        '''
+        """
         if len(top_vfr['top_views'][0]) == 0:
             text_views = ''
         elif len(top_vfr['top_views'][0]) == 1:
@@ -377,8 +381,9 @@ class ChatStats(ChatGetter):
         template_text = (self.text_head(week_stats, month_stats, year_stats)
                          + self.text_top_3(top_3)
                          + self.text_top_words(top_words)
-                         + self.text_polls_stats(polls_stats, self.average_polls_stats)
-                         + self.text_top_viewed_forwarded_replied(top_viewed_forwarded_replied))
+                         + self.text_polls_stats(polls_stats)
+                         + (self.text_top_viewed_forwarded_replied(top_viewed_forwarded_replied)
+                         if self.top_posts_stats else ''))
 
         return template_text
 
@@ -397,12 +402,14 @@ class ChatStats(ChatGetter):
         await self.client.send_message(tg_chat, text, link_preview=False, file=file)
 
     def options_update(self, n_words: int, top_3_number_of_words: bool, lemmatize: bool, average_polls_stats: bool,
-                       word_cloud: bool, stop_words: list):
+                       top_posts_stats: bool, word_cloud: bool, stop_words: list):
         """
         Updates optional parameters.
         :param n_words: number of words in top words list
         :param top_3_number_of_words: top 3 number pf words checkbox position
         :param lemmatize: lemmatizes checkbox position
+        :param average_polls_stats: average polls stats checkbox position
+        :param top_posts_stats: top posts checkbox position
         :param word_cloud: word cloud checkbox position
         :param stop_words: stopwords list
         :return: None
@@ -411,6 +418,7 @@ class ChatStats(ChatGetter):
         self.top_3_number_of_words = top_3_number_of_words
         self.lemmatize = lemmatize
         self.average_polls_stats = average_polls_stats
+        self.top_posts_stats = top_posts_stats
         self.word_cloud = word_cloud
         self.stop_words = stop_words
         self.cloud_words = None  # words for cloud words
