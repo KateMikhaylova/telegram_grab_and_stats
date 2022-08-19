@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from nltk.corpus import stopwords
 from collections import defaultdict, Counter
-from telethon.tl.types import PeerUser, MessageMediaPoll
+from telethon.tl.types import PeerUser, MessageMediaPoll, PeerChannel
 from chat_getter import ChatGetter
 from threading import Thread
 from queue import Queue
@@ -25,6 +25,7 @@ class ChatStats(ChatGetter):
         self.n_words = None
         self.top_3_number_of_words = None
         self.stop_words = None
+        self.top_posts_stats = None
         self.word_cloud = None
         self.average_polls_stats = None
 
@@ -117,11 +118,11 @@ class ChatStats(ChatGetter):
         if self.word_cloud:
             self.create_word_cloud()
 
-    def create_word_cloud(self) -> None:
-        '''
+    def create_word_cloud(self):
+        """
         Creates word cloud based on top 200 most common words in messages. Picture for word cloud mask may be changed
         :return: None
-        '''
+        """
         mask = array(Image.open(os.path.join('img', 'python_logo.png')))
         word_cloud = WordCloud(mask=mask).generate_from_frequencies(self.cloud_words)
 
@@ -131,6 +132,60 @@ class ChatStats(ChatGetter):
         plt.axis("off")
         plt.subplots_adjust(left=0, bottom=0, right=1, top=1)
         plt.savefig(os.path.join(os.getcwd(), 'img', f'word_cloud.png'))
+
+    def top_viewed_forwarded_replied(self, all_data: list, storage: Queue):
+        """
+        Calculates most viewed, forwarded and replied posts
+        :param all_data: all data from chat
+        :param storage: container for returning value
+        """
+
+        max_views = 0
+        max_viewed_msg = []
+
+        max_forwards = 0
+        max_forwarded_msg = []
+
+        max_replied = 0
+        max_replied_msg = []
+
+        for message in all_data:
+            if (message.from_id is None or type(message.from_id) == PeerChannel) \
+                    and message.message or type(message.media) == MessageMediaPoll:
+                # in the first pair of options first one takes posts if it is channel, second one posts if it is chat
+                # second pair of options takes posts with texts and also polls, which don't have message attribute
+
+                if message.views is not None and message.views > max_views:
+                    max_views = message.views
+                    max_viewed_msg.clear()
+                    max_viewed_msg.append(message)
+                elif message.forwards == max_views:
+                    max_viewed_msg.append(message)
+
+                if message.forwards is not None and message.forwards > max_forwards:
+                    max_forwards = message.forwards
+                    max_forwarded_msg.clear()
+                    max_forwarded_msg.append(message)
+                elif message.forwards == max_forwards:
+                    max_forwarded_msg.append(message)
+
+                if message.replies:  # comments in channel may be restricted
+                    if message.replies.replies > max_replied:
+                        max_replied = message.replies.replies
+                        max_replied_msg.clear()
+                        max_replied_msg.append(message)
+                    elif message.replies.replies == max_replied:
+                        max_replied_msg.append(message)
+
+        result = {
+            'top_replies': [[f'https://t.me/{self.tg_chat.username}/{message.id}' for message in max_replied_msg],
+                            max_replied],
+            'top_fwd': [[f'https://t.me/{self.tg_chat.username}/{message.id}' for message in max_forwarded_msg],
+                        max_forwards],
+            'top_views': [[f'https://t.me/{self.tg_chat.username}/{message.id}' for message in max_viewed_msg],
+                          max_views]}
+
+        storage.put(result)
 
     def polls_stats(self, all_data: list, storage: Queue):
         """
@@ -164,7 +219,14 @@ class ChatStats(ChatGetter):
                                                             else '☹')]
         storage.put(polls_stats_dict)
 
-    def text_head(self, week_stats, month_stats, year_stats):
+    def text_head(self, week_stats: bool, month_stats: bool, year_stats: bool) -> str:
+        """
+        Creates text head for template text
+        :param week_stats: if week period is chosen
+        :param month_stats: if month period is chosen
+        :param year_stats: if year period is chosen
+        :return: text head
+        """
         text = '🗓Итоги '
 
         if week_stats:
@@ -178,7 +240,12 @@ class ChatStats(ChatGetter):
 
         return text
 
-    def text_top_3(self, top_3):
+    def text_top_3(self, top_3: dict) -> str:
+        """
+        Creates text with top 3 participants based on quantity of comments for template text
+        :param top_3: dictionary with top participants
+        :return: text with top 3 participants
+        """
         text = '🏆 Топ комментаторов:\n'
 
         def comment_word_ending(position):
@@ -202,32 +269,86 @@ class ChatStats(ChatGetter):
 
         return text
 
-    def text_top_words(self, top_words):
+    def text_top_words(self, top_words: dict) -> str:
+        """
+        Creates text with top used words for template text
+        :param top_words: dictionary with top words
+        :return: text with top words
+        """
         text = f"⌨ Популярные слова:\n{(', '.join(sorted(top_words, key=lambda w: top_words[w], reverse=True)))}.\n"
 
         return text
 
-    def text_polls_stats(self, polls_stats, average_stats):
+    def text_polls_stats(self, polls_stats: dict) -> str:
+        """
+        Creates text with poll results for template text
+        :param polls_stats: dictionary with polls stats
+        :return: text with poll results
+        """
         text = ''
 
-        def test_word_ending(polls_stats):
-            text = str(len(polls_stats))
+        def test_word_ending(number: str) -> str:
+            """
+            :param number: quantity of polls
+            :return: word with correct ending
+            """
+            text = number
             text += ' тест'
 
-            if str(len(polls_stats))[-1] in ['2', '3', '4'] and ('0' + str(len(polls_stats)))[-2] != '1':
+            if number[-1] in ['2', '3', '4'] and ('0' + number)[-2] != '1':
                 text += 'а'
             else:
                 text += 'ов'
 
             return text
 
-        if average_stats and len(polls_stats) > 1:
-            text += f'\n📊 Было проведено {test_word_ending(polls_stats)}, на которые в среднем было дано '
+        if self.average_polls_stats and len(polls_stats) > 1:
+            text += f'\n📊 Было проведено {test_word_ending(str(len(polls_stats)))}, на которые в среднем было дано '
             text += f'{(percent := (round(sum(list(map(lambda poll: int(polls_stats[poll][0]), polls_stats)))/len(polls_stats))))}% правильных ответов '
             text += '🙂' if percent > 50 else '😐' if percent == 50 else '☹'
         else:
             for poll in polls_stats:
                 text += f'\n📊В [тесте]({poll}) {polls_stats[poll][0]}% ответили правильно {polls_stats[poll][1]}'
+
+        return text
+
+    def text_top_viewed_forwarded_replied(self, top_vfr: dict) -> str:
+        """
+        Creates text with top viewed forwarded and replied posts for template text
+        :param top_vfr: dictionary with top posts
+        :return: text with top posts
+        """
+        if len(top_vfr['top_views'][0]) == 0:
+            text_views = ''
+        elif len(top_vfr['top_views'][0]) == 1:
+            text_views = f'''
+\n👀 Самое большое количество просмотров ({top_vfr["top_views"][1]}) было у этого [поста]({top_vfr["top_views"][0][0]})\n'''
+        else:
+            text_views = f'👀 Самое большое количество просмотров ({top_vfr["top_views"][1]}) было у этих постов:\n'
+            for i, post in enumerate(top_vfr['top_views'][0], start=1):
+                text_views += f'[{i}]({post})\n'
+
+        if len(top_vfr['top_fwd'][0]) == 0:
+            text_fwd = ''
+        elif len(top_vfr['top_fwd'][0]) == 1:
+            text_fwd = f'''
+📨 Самое большое количество репостов ({top_vfr["top_fwd"][1]}) было у этого [поста]({top_vfr["top_fwd"][0][0]})\n'''
+        else:
+            text_fwd = f'📨 Самое большое количество репостов ({top_vfr["top_fwd"][1]}) было у этих постов:\n'
+            for i, post in enumerate(top_vfr['top_fwd'][0], start=1):
+                text_fwd += f'[{i}]({post})\n'
+
+        if len(top_vfr['top_replies'][0]) == 0:
+            text_replies = ''
+        elif len(top_vfr['top_replies'][0]) == 1:
+            text_replies = f'''
+💬 Самое большое количество комментариев ({top_vfr["top_replies"][1]}) было у этого [поста]({top_vfr["top_replies"][0][0]})\n'''
+        else:
+            text_replies = f'💬 Самое большое количество комментариев ({top_vfr["top_replies"][1]}) было у этих постов:\n'
+            for i, post in enumerate(top_vfr['top_replies'][0], start=1):
+                text_replies += f'[{i}]({post})\n'
+
+        text = text_views + text_fwd + text_replies
 
         return text
 
@@ -243,21 +364,26 @@ class ChatStats(ChatGetter):
         storage1 = Queue()  # creates containers for storing values
         storage2 = Queue()
         storage3 = Queue()
+        storage4 = Queue()
 
         threads = [Thread(target=self.top_3, args=[all_data, storage1, loop]),
                    Thread(target=self.top_words, args=[all_data, storage2, self.stop_words]),
-                   Thread(target=self.polls_stats, args=[all_data, storage3])]  # creating threads
+                   Thread(target=self.polls_stats, args=[all_data, storage3]),
+                   Thread(target=self.top_viewed_forwarded_replied, args=[all_data, storage4])]  # creating threads
         [thread.start() for thread in threads]
         [thread.join() for thread in threads]  # waits until all threads are done
 
         top_3 = storage1.get()  # gets values from containers
         top_words = storage2.get()
         polls_stats = storage3.get()
+        top_viewed_forwarded_replied = storage4.get()
 
         template_text = (self.text_head(week_stats, month_stats, year_stats)
                          + self.text_top_3(top_3)
                          + self.text_top_words(top_words)
-                         + self.text_polls_stats(polls_stats, self.average_polls_stats))
+                         + self.text_polls_stats(polls_stats)
+                         + (self.text_top_viewed_forwarded_replied(top_viewed_forwarded_replied)
+                         if self.top_posts_stats else ''))
 
         return template_text
 
@@ -276,12 +402,14 @@ class ChatStats(ChatGetter):
         await self.client.send_message(tg_chat, text, link_preview=False, file=file)
 
     def options_update(self, n_words: int, top_3_number_of_words: bool, lemmatize: bool, average_polls_stats: bool,
-                       word_cloud: bool, stop_words: list):
+                       top_posts_stats: bool, word_cloud: bool, stop_words: list):
         """
         Updates optional parameters.
         :param n_words: number of words in top words list
         :param top_3_number_of_words: top 3 number pf words checkbox position
         :param lemmatize: lemmatizes checkbox position
+        :param average_polls_stats: average polls stats checkbox position
+        :param top_posts_stats: top posts checkbox position
         :param word_cloud: word cloud checkbox position
         :param stop_words: stopwords list
         :return: None
@@ -290,6 +418,7 @@ class ChatStats(ChatGetter):
         self.top_3_number_of_words = top_3_number_of_words
         self.lemmatize = lemmatize
         self.average_polls_stats = average_polls_stats
+        self.top_posts_stats = top_posts_stats
         self.word_cloud = word_cloud
         self.stop_words = stop_words
         self.cloud_words = None  # words for cloud words
