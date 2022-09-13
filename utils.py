@@ -88,13 +88,13 @@ def date_range(week: int, month: int, year: int, week_stats: bool, month_stats: 
             date_start += relativedelta(years=1)
             date_end += relativedelta(months=-9, years=1)
         elif quarter * 2 < days <= quarter * 3:
-            date_start += relativedelta(months=2, years=1)
+            date_start += relativedelta(months=3, years=1)
             date_end += relativedelta(months=-6, years=1)
         elif quarter * 3 < days <= quarter * 4:
-            date_start += relativedelta(months=5, years=1)
+            date_start += relativedelta(months=6, years=1)
             date_end += relativedelta(months=-3, years=1)
         else:
-            date_start += relativedelta(months=8)
+            date_start += relativedelta(months=9)
     elif half_year_stats:
         half_year = 183 if current_year % 4 == 0 else 182.5
         if days > half_year:

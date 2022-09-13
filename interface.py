@@ -36,6 +36,8 @@ class Window(object):
                                self.box_week_statistic.isChecked(),
                                self.box_month_statistic.isChecked(),
                                self.box_year_statistic.isChecked(),
+                               self.box_quarter_statistic.isChecked(),
+                               self.box_half_year_statistic.isChecked(),
                                self.box_custom_statistic.isChecked())
 
         self.progressBar.setValue(0)
@@ -156,29 +158,40 @@ class Window(object):
         self.box_year_number.addItem("")
         self.box_year_number.addItem("")
         self.gridLayout.addWidget(self.box_year_number, 3, 1, 1, 1)
+
+        self.box_quarter_statistic = QtWidgets.QRadioButton(self.frame)
+        self.box_quarter_statistic.setChecked(False)
+        self.box_quarter_statistic.setObjectName("box_quarter_statistic")
+        self.gridLayout.addWidget(self.box_quarter_statistic, 4, 0, 1, 2)
+
+        self.box_half_year_statistic = QtWidgets.QRadioButton(self.frame)
+        self.box_half_year_statistic.setChecked(False)
+        self.box_half_year_statistic.setObjectName("box_quarter_statistic")
+        self.gridLayout.addWidget(self.box_half_year_statistic, 5, 0, 1, 2)
+
         self.box_custom_statistic = QtWidgets.QRadioButton(self.frame)
         self.box_custom_statistic.setChecked(False)
         self.box_custom_statistic.setObjectName("radioButton_14")
-        self.gridLayout.addWidget(self.box_custom_statistic, 4, 0, 1, 2)
+        self.gridLayout.addWidget(self.box_custom_statistic, 6, 0, 1, 2)
         self.label_2 = QtWidgets.QLabel(self.frame)
         self.label_2.setMaximumSize(QtCore.QSize(20, 16777215))
         self.label_2.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)
         self.label_2.setObjectName("label_2")
-        self.gridLayout.addWidget(self.label_2, 5, 0, 1, 1)
+        self.gridLayout.addWidget(self.label_2, 7, 0, 1, 1)
         self.box_custom_date_start = QtWidgets.QDateEdit(self.frame)
         self.box_custom_date_start.setObjectName("dateEdit")
         self.box_custom_date_start.setDate(datetime.now())
-        self.gridLayout.addWidget(self.box_custom_date_start, 5, 1, 1, 1)
+        self.gridLayout.addWidget(self.box_custom_date_start, 7, 1, 1, 1)
         self.label_3 = QtWidgets.QLabel(self.frame)
         self.label_3.setMaximumSize(QtCore.QSize(20, 16777215))
         self.label_3.setTabletTracking(False)
         self.label_3.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)
         self.label_3.setObjectName("label_3")
-        self.gridLayout.addWidget(self.label_3, 6, 0, 1, 1)
+        self.gridLayout.addWidget(self.label_3, 8, 0, 1, 1)
         self.box_custom_date_end = QtWidgets.QDateEdit(self.frame)
         self.box_custom_date_end.setObjectName("dateEdit_2")
         self.box_custom_date_end.setDate(datetime.now())
-        self.gridLayout.addWidget(self.box_custom_date_end, 6, 1, 1, 1)
+        self.gridLayout.addWidget(self.box_custom_date_end, 8, 1, 1, 1)
         self.horizontalLayout_4.addWidget(self.frame)
         self.line_2 = QtWidgets.QFrame(window)
         self.line_2.setFrameShape(QtWidgets.QFrame.VLine)
@@ -328,3 +341,5 @@ class Window(object):
         self.pushButton_2.setText(_translate("Form", "Добавить"))
         self.pushButton_3.setText(_translate("Form", "Удалить"))
         self.pushButton.setText(_translate("Form", "Отправить статистику"))
+        self.box_quarter_statistic.setText(_translate("Form", "Прошлый квартал:"))
+        self.box_half_year_statistic.setText(_translate("Form", "Прошлое полугодие:"))
