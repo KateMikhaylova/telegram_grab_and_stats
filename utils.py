@@ -43,7 +43,8 @@ def get_text_from_box(box: QtWidgets.QListWidget):
     return [box.item(index).text() for index in range(box.count())]
 
 
-def date_range(week: int, month: int, year: int, week_stats: bool, month_stats: bool, year_stats: bool):
+def date_range(week: int, month: int, year: int, week_stats: bool, month_stats: bool, year_stats: bool,
+               quarter_stats: bool, half_year_stats: bool):
     """
     Sets list of 2 dates [start of searching, now]
     :param week: week number (0 - past week)
@@ -52,6 +53,8 @@ def date_range(week: int, month: int, year: int, week_stats: bool, month_stats: 
     :param week_stats: 'True' if GUI button is set to weekly interval
     :param month_stats: 'True' if GUI button is set to monthly interval
     :param year_stats: 'True' if GUI button is set to annual interval
+    :param quarter_stats: 'True' if GUI button is set to quarter interval
+    :param half_year_stats: 'True' if GUI button is set to half-year interval
     :return: date interval [start of searching, now]
     """
     date_now = datetime.now(timezone.utc).date()
@@ -60,7 +63,7 @@ def date_range(week: int, month: int, year: int, week_stats: bool, month_stats: 
         days = date_now.weekday() + 1
     elif month_stats:
         days = date_now.day
-    elif year_stats:
+    elif year_stats or quarter_stats or half_year_stats:
         days = date_now.timetuple().tm_yday
 
     current_year = (date_now - relativedelta(years=year)).year
@@ -68,10 +71,36 @@ def date_range(week: int, month: int, year: int, week_stats: bool, month_stats: 
     date_end = date_now - relativedelta(days=days + (1 if current_year % 4 == 0 and year_stats else 0),
                                         weeks=week if week_stats else 0,
                                         months=month if month_stats else 0,
-                                        years=year if year_stats else 0)
+                                        years=year if (year_stats
+                                                       or quarter_stats
+                                                       or half_year_stats)
+                                        else 0)
     date_start = date_end - relativedelta(days=-1 + (date_end.day if month_stats
-                                                     else date_end.timetuple().tm_yday if year_stats
+                                                     else date_end.timetuple().tm_yday if (year_stats
+                                                                                           or quarter_stats
+                                                                                           or half_year_stats)
                                                      else 0),
                                           weeks=1 if week_stats else 0)
+
+    if quarter_stats:
+        quarter = 91.5 if current_year % 4 == 0 else 91.25
+        if quarter < days <= quarter * 2:
+            date_start += relativedelta(years=1)
+            date_end += relativedelta(months=-9, years=1)
+        elif quarter * 2 < days <= quarter * 3:
+            date_start += relativedelta(months=2, years=1)
+            date_end += relativedelta(months=-6, years=1)
+        elif quarter * 3 < days <= quarter * 4:
+            date_start += relativedelta(months=5, years=1)
+            date_end += relativedelta(months=-3, years=1)
+        else:
+            date_start += relativedelta(months=8)
+    elif half_year_stats:
+        half_year = 183 if current_year % 4 == 0 else 182.5
+        if days > half_year:
+            date_start += relativedelta(years=1)
+            date_end += relativedelta(months=-6, years=1)
+        else:
+            date_start += relativedelta(months=6)
 
     return [date_start, date_end]
