@@ -239,9 +239,9 @@ class ChatStats(ChatGetter):
         elif year_stats:
             text += 'года '
         elif quarter_stats:
-            text += 'квартала'
+            text += 'квартала '
         elif half_year_stats:
-            text += 'полугодия'
+            text += 'полугодия '
 
         text += f"({self.date_range[0].strftime('%d/%m/%Y')} - {self.date_range[1].strftime('%d/%m/%Y')})\n\n"
 
