@@ -84,6 +84,8 @@ class ChatStats(ChatGetter):
             if type(message.from_id) == PeerUser and message.message:
                 text += ' ' + message.message.lower()
 
+        url_pattern = re.compile(r'(https?://[\S]+)')
+        text = url_pattern.sub('', text)
         split_pattern = re.compile(r'[а-яёa-z]+(?:-[а-яёa-z]+)?', re.I)
         tokens = split_pattern.findall(text)
 
@@ -106,13 +108,14 @@ class ChatStats(ChatGetter):
             pymorphed_tokens = []
             for token in tokens:
                 pymorphed_tokens.append(morph.parse(token)[0].normal_form)
+            pymorphed_tokens = [token.replace('ё', 'е') for token in pymorphed_tokens]
             pymorphed_tokens = [token for token in pymorphed_tokens if token not in all_stopwords]
             pymorphed = Counter(pymorphed_tokens)
 
             if self.word_cloud:
-                self.cloud_words = {word.replace('ё', 'е'): quantity for word, quantity in pymorphed.most_common(200)}
+                self.cloud_words = {word: quantity for word, quantity in pymorphed.most_common(200)}
 
-            top_words = {word.replace('ё', 'е'): quantity for word, quantity in pymorphed.most_common(self.n_words)}
+            top_words = {word: quantity for word, quantity in pymorphed.most_common(self.n_words)}
             storage.put(top_words)
 
         if self.word_cloud:
