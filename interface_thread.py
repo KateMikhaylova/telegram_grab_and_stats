@@ -39,7 +39,9 @@ class WindowThread(QtCore.QThread):
             message = self.week_stats.stats_template(all_data,
                                                      self.window.box_week_statistic.isChecked(),
                                                      self.window.box_month_statistic.isChecked(),
-                                                     self.window.box_year_statistic.isChecked(), self.loop)
+                                                     self.window.box_year_statistic.isChecked(),
+                                                     self.window.box_quarter_statistic.isChecked(),
+                                                     self.window.box_half_year_statistic.isChecked(), self.loop)
             self.loop.run_until_complete(self.week_stats.send_post(message))
         else:
             self.loop.run_until_complete(self.week_stats.send_post(
