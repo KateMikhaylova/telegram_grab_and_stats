@@ -3,6 +3,12 @@ from PyQt5.QtCore import pyqtBoundSignal
 from telethon import TelegramClient
 from telethon.tl.types import InputPeerEmpty, Channel
 from telethon.tl.functions.messages import GetDialogsRequest, GetHistoryRequest
+from pyrogram import Client
+from pyrogram.enums import ChatType
+from pyrogram.types.user_and_chats.user import User
+from pyrogram.types.user_and_chats.chat import Chat
+from pyrogram.errors.exceptions.bad_request_400 import MsgIdInvalid
+from time import sleep
 
 
 class ChatGetter:
@@ -41,7 +47,6 @@ class ChatGetter:
         :return: list of messages (objects)
         """
         broadcast_channel = self.tg_chat.broadcast
-
         offset_msg = 0
         limit_msg = 100
         date_offset = self.date_range[1] + timedelta(days=1)
@@ -126,3 +131,104 @@ class ChatGetter:
                           + ']'
                           + f'(tg://user?id={user_id})']
         return links
+
+    def get_posts_reactions(self, app: Client) -> list:
+        with app:
+            chat_id = '-100' + str(self.tg_chat.id)
+            chat = app.get_chat(chat_id)
+
+            offset_msg = 0
+            limit_msg = 100
+            date_offset = self.date_range[1] + timedelta(days=1)
+
+            reactions_dict = {}
+
+            while True:
+                messages = list(app.get_chat_history(chat_id=chat_id,
+                                                     limit=limit_msg,
+                                                     offset_id=offset_msg,
+                                                     offset_date=date_offset
+                                                     ))
+                if not messages:
+                    return sorted(reactions_dict.items(), reverse=True)
+                for message in messages:
+                    message_id = message.id
+                    if message.date.date() < self.date_range[0]:
+                        return sorted(reactions_dict.items(), reverse=True)
+                    if chat.type == ChatType.CHANNEL:
+                        if message.reactions is not None:
+                            reactions = 0
+                            for element in message.reactions.reactions:
+                                reactions += element.count
+                            if reactions not in reactions_dict:
+                                reactions_dict[reactions] = [f'https://t.me/{message.chat.username}/{message.id}']
+                            else:
+                                reactions_dict[reactions].append(f'https://t.me/{message.chat.username}/{message.id}')
+                    elif chat.type == ChatType.GROUP or chat.type == ChatType.SUPERGROUP:
+                        if type(message.sender_chat) == Chat and message.reactions is not None:
+                            reactions = 0
+                            for element in message.reactions.reactions:
+                                reactions += element.count
+                            if reactions not in reactions_dict:
+                                reactions_dict[reactions] = [f'https://t.me/{message.chat.username}/{message.id}']
+                            else:
+                                reactions_dict[reactions].append(f'https://t.me/{message.chat.username}/{message.id}')
+                offset_msg = message_id
+
+    def get_comment_reactions(self, app: Client) -> list:
+        with app:
+            chat_id = '-100' + str(self.tg_chat.id)
+            chat = app.get_chat(chat_id)
+
+            offset_msg = 0
+            limit_msg = 100
+            date_offset = self.date_range[1] + timedelta(days=1)
+
+            reactions_dict = {}
+            while True:
+                messages = list(app.get_chat_history(chat_id=chat_id,
+                                                     limit=limit_msg,
+                                                     offset_id=offset_msg,
+                                                     offset_date=date_offset
+                                                     ))
+                if not messages:
+                    return sorted(reactions_dict.items(), reverse=True)
+                for message in messages:
+                    message_id = message.id
+                    if message.date.date() < self.date_range[0]:
+                        return sorted(reactions_dict.items(), reverse=True)
+                    if chat.type == ChatType.CHANNEL:
+                        # если к отдельному посту отключены комментарии, получаем ошибку. В pythontalk например есть
+                        # такой пост https://t.me/pythontalk_ru/97. Или обходить ее вручную (if message.id == 97:
+                        # continue, но сколько таких теоретически может быть) или try-except. Да и без try-except в
+                        # цикле сбор комментариев по постам в пирограме очень медленный (его еще приходится отправлять
+                        # поспать после каждого такого запроса, иначе pyrogram.errors.exceptions.flood_420.FloodWait),
+                        # по-хорошему лучше для оценки лайков комменты собирать в чате конечно. Опять же, поиск внутри
+                        # постов канала все равно даст в id сообщений ссылки на сообщения чата и ссылка на топовое все
+                        # равно приведет в чат
+                        sleep(1)
+                        try:
+                            for comment in app.get_discussion_replies(chat_id=chat_id, message_id=message.id):
+                                if comment.reactions is not None:
+                                    reactions = 0
+                                    for element in comment.reactions.reactions:
+                                        reactions += element.count
+                                    if reactions not in reactions_dict:
+                                        reactions_dict[reactions] = [f'https://t.me/{comment.chat.username}/{comment.id}']
+                                    else:
+                                        reactions_dict[reactions].append(f'https://t.me/{comment.chat.username}/{comment.id}')
+                        except MsgIdInvalid:
+                            pass
+
+                    elif chat.type == ChatType.GROUP or chat.type == ChatType.SUPERGROUP:
+
+                        if type(message.from_user) == User and message.reactions is not None:
+
+                            reactions = 0
+                            for element in message.reactions.reactions:
+                                reactions += element.count
+                            if reactions not in reactions_dict:
+                                reactions_dict[reactions] = [f'https://t.me/{message.chat.username}/{message.id}']
+                            else:
+                                reactions_dict[reactions].append(f'https://t.me/{message.chat.username}/{message.id}')
+                offset_msg = message_id

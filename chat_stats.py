@@ -140,50 +140,38 @@ class ChatStats(ChatGetter):
         :param storage: container for returning value
         """
 
-        max_views = 0
-        max_viewed_msg = []
-
-        max_forwards = 0
-        max_forwarded_msg = []
-
-        max_replied = 0
-        max_replied_msg = []
+        views_dict = {}
+        forwards_dict = {}
+        replies_dict = {}
 
         for message in all_data:
             if (message.from_id is None or type(message.from_id) == PeerChannel) \
                     and message.message or type(message.media) == MessageMediaPoll:
                 # in the first pair of options first one takes posts if it is channel, second one posts if it is chat
                 # second pair of options takes posts with texts and also polls, which don't have message attribute
+                if message.views is not None:
+                    if message.views not in views_dict:
+                        views_dict[message.views] = [f'https://t.me/{self.tg_chat.username}/{message.id}']
+                    else:
+                        views_dict[message.views].append(f'https://t.me/{self.tg_chat.username}/{message.id}')
 
-                if message.views is not None and message.views > max_views:
-                    max_views = message.views
-                    max_viewed_msg.clear()
-                    max_viewed_msg.append(message)
-                elif message.forwards == max_views:
-                    max_viewed_msg.append(message)
-
-                if message.forwards is not None and message.forwards > max_forwards:
-                    max_forwards = message.forwards
-                    max_forwarded_msg.clear()
-                    max_forwarded_msg.append(message)
-                elif message.forwards == max_forwards:
-                    max_forwarded_msg.append(message)
+                if message.forwards is not None:
+                    if message.forwards not in forwards_dict:
+                        forwards_dict[message.forwards] = [f'https://t.me/{self.tg_chat.username}/{message.id}']
+                    else:
+                        forwards_dict[message.forwards].append(f'https://t.me/{self.tg_chat.username}/{message.id}')
 
                 if message.replies:  # comments in channel may be restricted
-                    if message.replies.replies > max_replied:
-                        max_replied = message.replies.replies
-                        max_replied_msg.clear()
-                        max_replied_msg.append(message)
-                    elif message.replies.replies == max_replied:
-                        max_replied_msg.append(message)
+                    if message.replies.replies not in replies_dict:
+                        replies_dict[message.replies.replies] = [f'https://t.me/{self.tg_chat.username}/{message.id}']
+                    else:
+                        replies_dict[message.replies.replies].append(f'https://t.me/{self.tg_chat.username}/{message.id}')
 
-        result = {
-            'top_replies': [[f'https://t.me/{self.tg_chat.username}/{message.id}' for message in max_replied_msg],
-                            max_replied],
-            'top_fwd': [[f'https://t.me/{self.tg_chat.username}/{message.id}' for message in max_forwarded_msg],
-                        max_forwards],
-            'top_views': [[f'https://t.me/{self.tg_chat.username}/{message.id}' for message in max_viewed_msg],
-                          max_views]}
+        views = sorted(views_dict.items(), reverse=True)
+        forwards = sorted(forwards_dict.items(), reverse=True)
+        replies = sorted(replies_dict.items(), reverse=True)
+
+        result = {'views': views, 'forwards': forwards, 'replies': replies}
 
         storage.put(result)
 
@@ -312,44 +300,110 @@ class ChatStats(ChatGetter):
 
         return text
 
-    def text_top_viewed_forwarded_replied(self, top_vfr: dict) -> str:
+    def text_posts_reactions(self, reactions_list, quantity=1):
+        reactions = reactions_list[:quantity]
+        text = ''
+        if len(reactions) == 0:
+            return text
+        if len(reactions) > 0:
+            text += 'Самое большое количество реакций '
+            if len(reactions[0][1]) == 1:
+                text += f'({reactions[0][0]}) набрал этот [пост]({reactions[0][1][0]}).'
+            elif len(reactions[0][1]) > 1:
+                text += f'({reactions[0][0]}) набрали эти посты: '
+                for i, post in enumerate(reactions[0][1], start=1):
+                    text += f'[{i}]({post}) '
+        if len(reactions) > 1:
+            text += '\nСледом идут посты с количеством реакций '
+            for reaction in reactions[1:]:
+                text += f'\n{reaction[0]} - '
+                for i, post in enumerate(reaction[1], start=1):
+                    text += f'[{i}]({post}) '
+        return text
+
+    def text_top_viewed_forwarded_replied(self, top_vfr: dict, quantity: int=1) -> str:
         """
         Creates text with top viewed forwarded and replied posts for template text
         :param top_vfr: dictionary with top posts
         :return: text with top posts
         """
-        if len(top_vfr['top_views'][0]) == 0:
-            text_views = ''
-        elif len(top_vfr['top_views'][0]) == 1:
-            text_views = f'''
-\n👀 Самое большое количество просмотров ({top_vfr["top_views"][1]}) было у этого [поста]({top_vfr["top_views"][0][0]})\n'''
-        else:
-            text_views = f'👀 Самое большое количество просмотров ({top_vfr["top_views"][1]}) было у этих постов:\n'
-            for i, post in enumerate(top_vfr['top_views'][0], start=1):
-                text_views += f'[{i}]({post})\n'
+        from pprint import pprint
+        pprint(top_vfr)
+        views = top_vfr['views'][:quantity]
+        forwards = top_vfr['forwards'][:quantity]
+        replies = top_vfr['replies'][:quantity]
 
-        if len(top_vfr['top_fwd'][0]) == 0:
-            text_fwd = ''
-        elif len(top_vfr['top_fwd'][0]) == 1:
-            text_fwd = f'''
-📨 Самое большое количество репостов ({top_vfr["top_fwd"][1]}) было у этого [поста]({top_vfr["top_fwd"][0][0]})\n'''
-        else:
-            text_fwd = f'📨 Самое большое количество репостов ({top_vfr["top_fwd"][1]}) было у этих постов:\n'
-            for i, post in enumerate(top_vfr['top_fwd'][0], start=1):
-                text_fwd += f'[{i}]({post})\n'
+        text_views = ''
+        if len(views) > 0:
+            text_views += '\n👀 Самое большое количество просмотров '
+            if len(views[0][1]) == 1:
+                text_views += f'({views[0][0]}) было у этого [поста]({views[0][1][0]}).'
+            elif len(views[0][1]) > 1:
+                text_views += f'({views[0][0]}) было у этих постов: '
+                for i, post in enumerate(views[0][1], start=1):
+                    text_views += f'[{i}]({post}) '
+        if len(views) > 1:
+            text_views += '\nСледом идут посты с количеством просмотров '
+            for view in views[1:]:
+                text_views += f'\n{view[0]} - '
+                for i, post in enumerate(view[1], start=1):
+                    text_views += f'[{i}]({post}) '
 
-        if len(top_vfr['top_replies'][0]) == 0:
-            text_replies = ''
-        elif len(top_vfr['top_replies'][0]) == 1:
-            text_replies = f'''
-💬 Самое большое количество комментариев ({top_vfr["top_replies"][1]}) было у этого [поста]({top_vfr["top_replies"][0][0]})\n'''
-        else:
-            text_replies = f'💬 Самое большое количество комментариев ({top_vfr["top_replies"][1]}) было у этих постов:\n'
-            for i, post in enumerate(top_vfr['top_replies'][0], start=1):
-                text_replies += f'[{i}]({post})\n'
+        text_fwd = ''
+        if len(forwards) > 0:
+            text_fwd += '\n📨 Самое большое количество репостов '
+            if len(forwards[0][1]) == 1:
+                text_fwd += f'({forwards[0][0]}) было у этого [поста]({forwards[0][1][0]}).'
+            elif len(forwards[0][1]) > 1:
+                text_fwd += f'({forwards[0][0]}) было у этих постов: '
+                for i, post in enumerate(forwards[0][1], start=1):
+                    text_fwd += f'[{i}]({post}) '
+        if len(forwards) > 1:
+            text_fwd += '\nСледом идут посты с количеством репостов '
+            for forward in forwards[1:]:
+                text_fwd += f'\n{forward[0]} - '
+                for i, post in enumerate(forward[1], start=1):
+                    text_fwd += f'[{i}]({post}) '
+
+        text_replies = ''
+        if len(replies) > 0:
+            text_replies += '\n💬 Самое большое количество комментариев '
+            if len(replies[0][1]) == 1:
+                text_replies += f'({replies[0][0]}) было у этого [поста]({replies[0][1][0]}).'
+            elif len(replies[0][1]) > 1:
+                text_replies += f'({replies[0][0]}) было у этих постов: '
+                for i, post in enumerate(replies[0][1], start=1):
+                    text_replies += f'[{i}]({post}) '
+        if len(replies) > 1:
+            text_replies += '\nСледом идут посты с количеством комментариев '
+            for reply in replies[1:]:
+                text_replies += f'\n{reply[0]} - '
+                for i, post in enumerate(reply[1], start=1):
+                    text_replies += f'[{i}]({post}) '
 
         text = text_views + text_fwd + text_replies
 
+        return text
+
+    def text_comments_reactions(self, reactions_list, quantity=1):
+        reactions = reactions_list[:quantity]
+        text = ''
+        if len(reactions) == 0:
+            return text
+        if len(reactions) > 0:
+            text += 'А еще у нас были комментарии, в которых авторы жгли не по-детски. Самое большое количество реакций '
+            if len(reactions[0][1]) == 1:
+                text += f'({reactions[0][0]}) набрал этот [комментарий]({reactions[0][1][0]}).'
+            elif len(reactions[0][1]) > 1:
+                text += f'({reactions[0][0]}) набрали эти комментарии: '
+                for i, post in enumerate(reactions[0][1], start=1):
+                    text += f'[{i}]({post}) '
+        if len(reactions) > 1:
+            text += '\nСледом идут чуть менее искрометные комментарии с количеством реакций '
+            for reaction in reactions[1:]:
+                text += f'\n{reaction[0]} - '
+                for i, post in enumerate(reaction[1], start=1):
+                    text += f'[{i}]({post}) '
         return text
 
     def stats_template(self, all_data: list, week_stats: bool, month_stats: bool, year_stats: bool, loop) -> str:
