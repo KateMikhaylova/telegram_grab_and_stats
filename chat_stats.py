@@ -28,6 +28,7 @@ class ChatStats(ChatGetter):
         self.top_posts_stats = None
         self.word_cloud = None
         self.average_polls_stats = None
+        self.mask = None
 
     def top_3(self, all_data: list, storage: Queue, loop):
         """
@@ -123,15 +124,15 @@ class ChatStats(ChatGetter):
         Creates word cloud based on top 200 most common words in messages. Picture for word cloud mask may be changed
         :return: None
         """
-        mask = array(Image.open(os.path.join('img', 'python_logo.png')))
-        word_cloud = WordCloud(mask=mask).generate_from_frequencies(self.cloud_words)
+        mask = array(Image.open(os.path.join('img', self.mask)))
+        word_cloud = WordCloud(mask=mask, background_color='White').generate_from_frequencies(self.cloud_words)
 
         image_colors = ImageColorGenerator(mask)
         plt.figure(frameon=False, figsize=[15, 15])
         plt.imshow(word_cloud.recolor(color_func=image_colors), interpolation='bilinear')
         plt.axis("off")
         plt.subplots_adjust(left=0, bottom=0, right=1, top=1)
-        plt.savefig(os.path.join(os.getcwd(), 'img', f'word_cloud.png'))
+        plt.savefig(os.path.join(os.getcwd(), 'img', 'temp', 'word_cloud.png'))
 
     def top_viewed_forwarded_replied(self, all_data: list, storage: Queue):
         """
@@ -405,7 +406,7 @@ class ChatStats(ChatGetter):
         """
 
         if self.word_cloud and self.cloud_words:
-            file = os.path.join('img', 'word_cloud.png')
+            file = os.path.join('img', 'temp', 'word_cloud.png')
         else:
             file = None
 
