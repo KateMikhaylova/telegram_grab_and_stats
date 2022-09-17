@@ -302,13 +302,12 @@ class Window(object):
         self.verticalLayout6 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents2)
         self.verticalLayout6.setObjectName("verticalLayout6")
 
-        self.pictures_text = [text for text in os.listdir('img') if text.endswith('png')]
-        print(self.pictures_text)
+        self.pictures_text = ['случайный выбор'] + [text for text in os.listdir('img') if text.endswith('png')]
         buttons2 = [QtWidgets.QRadioButton(self.scrollAreaWidgetContents2) for _ in range(len(self.pictures_text))]
         buttons2[0].setChecked(True)
         [button.setChecked(False) for button in buttons2[1:]]
         [button.setObjectName(f"radioButton_{i}") for i, button in enumerate(buttons2, start=1)]
-        [self.verticalLayout6.addWidget(button) for button in buttons2]  # creates list of channels
+        [self.verticalLayout6.addWidget(button) for button in buttons2]  # creates list of mask names
 
         self.scrollArea2.setWidget(self.scrollAreaWidgetContents2)
         self.verticalLayout_7.addWidget(self.scrollArea2)

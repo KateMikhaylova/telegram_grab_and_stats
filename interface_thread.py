@@ -1,4 +1,5 @@
 import asyncio
+from random import choice
 
 from telethon import TelegramClient
 from PyQt5 import QtCore
@@ -35,7 +36,10 @@ class WindowThread(QtCore.QThread):
 
         for num, button in enumerate(self.buttons_mask_list):  # checks which mask was selected
             if button.isChecked():
-                self.week_stats.mask = button.text()
+                if num == 0:
+                    self.week_stats.mask = choice(self.window.pictures_text[1:])
+                else:
+                    self.week_stats.mask = button.text()
 
         asyncio.set_event_loop(self.loop)  # sets the loop to current thread
 
