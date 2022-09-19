@@ -4,12 +4,13 @@ from telethon import TelegramClient
 from PyQt5 import QtCore
 from utils import get_text_from_box, write_to_file
 from chat_stats import ChatStats
+from pyrogram import Client
 
 
 class WindowThread(QtCore.QThread):
     any_signal = QtCore.pyqtSignal(int)
 
-    def __init__(self, telethon_client: TelegramClient, loop, chat_stats: ChatStats, buttons_channel_list: list,
+    def __init__(self, telethon_client: TelegramClient, pyrogram_client: Client, loop, chat_stats: ChatStats, buttons_channel_list: list,
                  window, parent=None):
         """
         :param telethon_client: telegram client
@@ -20,6 +21,7 @@ class WindowThread(QtCore.QThread):
         """
         super(WindowThread, self).__init__(parent)
         self.telethon_client = telethon_client
+        self.pyrogram_client = pyrogram_client
         self.loop = loop
         self.week_stats = chat_stats
         self.buttons_channel_list = buttons_channel_list
@@ -36,14 +38,13 @@ class WindowThread(QtCore.QThread):
         all_data = self.loop.run_until_complete(self.week_stats.get_all_data(self.any_signal))
 
         if all_data:
+            if self.week_stats.top_posts_reactions or self.week_stats.top_comments_reactions:
+                self.week_stats.reaction_list = self.week_stats.get_posts_reactions(self.pyrogram_client)
+
             message = self.week_stats.stats_template(all_data,
                                                      self.window.box_week_statistic.isChecked(),
                                                      self.window.box_month_statistic.isChecked(),
                                                      self.window.box_year_statistic.isChecked(), self.loop)
-
-            if self.window.box_top_reactions_posts.isChecked() or self.window.box_top_reactions_comments.isChecked():
-                ...  # TODO: add the function get_posts_reactions()
-
 
             self.loop.run_until_complete(self.week_stats.send_post(message))
         else:

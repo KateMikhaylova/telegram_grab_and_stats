@@ -18,7 +18,7 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
 
     telethon_client = TelegramClient(phone, int(api_id), api_hash, loop=loop)
-    pyrogram_client = Client(phone, api_id=api_id, api_hash=api_hash)
+    pyrogram_client = Client('my_account', api_id=api_id, api_hash=api_hash)
 
     with telethon_client:
         app = QtWidgets.QApplication(sys.argv)

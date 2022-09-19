@@ -27,8 +27,11 @@ class ChatStats(ChatGetter):
         self.top_3_number_of_words = None
         self.stop_words = None
         self.top_posts_stats = None
+        self.top_posts_reactions = None
+        self.top_comments_reactions = None
         self.word_cloud = None
         self.average_polls_stats = None
+        self.reaction_list = None
 
     def top_3(self, all_data: list, storage: Queue, loop):
         """
@@ -436,7 +439,9 @@ class ChatStats(ChatGetter):
                          + self.text_top_words(top_words)
                          + self.text_polls_stats(polls_stats)
                          + (self.text_top_viewed_forwarded_replied(top_viewed_forwarded_replied)
-                         if self.top_posts_stats else ''))
+                            if self.top_posts_stats else '')
+                         + (self.text_posts_reactions(self.reaction_list) if self.top_posts_reactions else '')
+                         + (self.text_comments_reactions(self.reaction_list) if self.top_comments_reactions else ''))
 
         return template_text
 
@@ -454,8 +459,10 @@ class ChatStats(ChatGetter):
 
         await self.telethon_client.send_message(tg_chat, text, link_preview=False, file=file)
 
-    def options_update(self, n_words: int, n_posts: int, top_3_number_of_words: bool, lemmatize: bool, average_polls_stats: bool,
-                       top_posts_stats: bool, word_cloud: bool, stop_words: list):
+    def options_update(self, n_words: int, n_posts: int, top_3_number_of_words: bool, lemmatize: bool,
+                       average_polls_stats: bool,
+                       top_posts_stats: bool, top_posts_reactions: bool, top_comments_reactions: bool,
+                       word_cloud: bool, stop_words: list):
         """
         Updates optional parameters.
         :param n_words: number of words in top words list
@@ -464,6 +471,8 @@ class ChatStats(ChatGetter):
         :param lemmatize: lemmatizes checkbox position
         :param average_polls_stats: average polls stats checkbox position
         :param top_posts_stats: top posts checkbox position
+        :param top_posts_reactions: top posts reactions checkbox position
+        :param top_comments_reactions: top comments reactions checkbox position
         :param word_cloud: word cloud checkbox position
         :param stop_words: stopwords list
         :return: None
@@ -474,6 +483,8 @@ class ChatStats(ChatGetter):
         self.lemmatize = lemmatize
         self.average_polls_stats = average_polls_stats
         self.top_posts_stats = top_posts_stats
+        self.top_posts_reactions = top_posts_reactions
+        self.top_comments_reactions = top_comments_reactions
         self.word_cloud = word_cloud
         self.stop_words = stop_words
         self.cloud_words = None  # words for cloud words

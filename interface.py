@@ -28,6 +28,8 @@ class Window(object):
                                   self.box_lemmatize.isChecked(),
                                   self.box_average_polls_stats.isChecked(),
                                   self.box_top_posts_stats.isChecked(),
+                                  self.box_top_reactions_posts.isChecked(),
+                                  self.box_top_reactions_comments.isChecked(),
                                   self.box_word_cloud.isChecked(),
                                   get_text_from_box(self.listWidget))
 
@@ -45,7 +47,8 @@ class Window(object):
         progress_bar_range = (chat_stats.date_range[1] - chat_stats.date_range[0]).days
         self.progressBar.setRange(0, progress_bar_range)
 
-        self.uploading = WindowThread(telethon_client, loop, chat_stats, buttons_channel_list, self, parent=None)
+        self.uploading = WindowThread(telethon_client, pyrogram_client,
+                                      loop, chat_stats, buttons_channel_list, self, parent=None)
         self.uploading.start()
         self.uploading.any_signal.connect(self.progress_bar_counter)
 
@@ -230,6 +233,7 @@ class Window(object):
         self.horizontalLayout_5.addWidget(self.line_5)
 
         self.box_n_posts = QtWidgets.QSpinBox(window)
+        self.box_n_posts.setMaximum(10)
         self.box_n_posts.setProperty("value", 1)
         self.box_n_posts.setObjectName("spinBox")
         self.horizontalLayout_5.addWidget(self.box_n_posts)
@@ -246,6 +250,7 @@ class Window(object):
         self.label_4.setObjectName("label_4")
         self.horizontalLayout.addWidget(self.label_4)
         self.box_n_words = QtWidgets.QSpinBox(window)
+        self.box_n_words.setMaximum(10)
         self.box_n_words.setProperty("value", 7)
         self.box_n_words.setObjectName("spinBox")
         self.horizontalLayout.addWidget(self.box_n_words)
