@@ -305,12 +305,12 @@ class ChatStats(ChatGetter):
         return text
 
     def text_posts_reactions(self, reactions_list):
-        reactions = reactions_list[:self.n_posts]
+        reactions = reactions_list[0][:self.n_posts]
         text = ''
         if len(reactions) == 0:
             return text
         if len(reactions) > 0:
-            text += 'Самое большое количество реакций '
+            text += '\n👍Самое большое количество реакций '
             if len(reactions[0][1]) == 1:
                 text += f'({reactions[0][0]}) набрал этот [пост]({reactions[0][1][0]}).'
             elif len(reactions[0][1]) > 1:
@@ -388,12 +388,12 @@ class ChatStats(ChatGetter):
         return text
 
     def text_comments_reactions(self, reactions_list):
-        reactions = reactions_list[:self.n_posts]
+        reactions = reactions_list[1][:self.n_posts]
         text = ''
         if len(reactions) == 0:
             return text
         if len(reactions) > 0:
-            text += 'А еще у нас были комментарии, в которых авторы жгли не по-детски. Самое большое количество реакций '
+            text += '\n🥰А еще у нас были комментарии, в которых авторы жгли не по-детски. Самое большое количество реакций '
             if len(reactions[0][1]) == 1:
                 text += f'({reactions[0][0]}) набрал этот [комментарий]({reactions[0][1][0]}).'
             elif len(reactions[0][1]) > 1:
