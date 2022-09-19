@@ -23,6 +23,7 @@ class ChatStats(ChatGetter):
         super().__init__(telethon_client)
         self.lemmatize = None
         self.n_words = None
+        self.n_posts = None
         self.top_3_number_of_words = None
         self.stop_words = None
         self.top_posts_stats = None
@@ -300,8 +301,8 @@ class ChatStats(ChatGetter):
 
         return text
 
-    def text_posts_reactions(self, reactions_list, quantity=1):
-        reactions = reactions_list[:quantity]
+    def text_posts_reactions(self, reactions_list):
+        reactions = reactions_list[:self.n_posts]
         text = ''
         if len(reactions) == 0:
             return text
@@ -321,17 +322,15 @@ class ChatStats(ChatGetter):
                     text += f'[{i}]({post}) '
         return text
 
-    def text_top_viewed_forwarded_replied(self, top_vfr: dict, quantity: int=1) -> str:
+    def text_top_viewed_forwarded_replied(self, top_vfr: dict) -> str:
         """
         Creates text with top viewed forwarded and replied posts for template text
         :param top_vfr: dictionary with top posts
         :return: text with top posts
         """
-        from pprint import pprint
-        pprint(top_vfr)
-        views = top_vfr['views'][:quantity]
-        forwards = top_vfr['forwards'][:quantity]
-        replies = top_vfr['replies'][:quantity]
+        views = top_vfr['views'][:self.n_posts]
+        forwards = top_vfr['forwards'][:self.n_posts]
+        replies = top_vfr['replies'][:self.n_posts]
 
         text_views = ''
         if len(views) > 0:
@@ -385,8 +384,8 @@ class ChatStats(ChatGetter):
 
         return text
 
-    def text_comments_reactions(self, reactions_list, quantity=1):
-        reactions = reactions_list[:quantity]
+    def text_comments_reactions(self, reactions_list):
+        reactions = reactions_list[:self.n_posts]
         text = ''
         if len(reactions) == 0:
             return text
@@ -455,11 +454,12 @@ class ChatStats(ChatGetter):
 
         await self.telethon_client.send_message(tg_chat, text, link_preview=False, file=file)
 
-    def options_update(self, n_words: int, top_3_number_of_words: bool, lemmatize: bool, average_polls_stats: bool,
+    def options_update(self, n_words: int, n_posts: int, top_3_number_of_words: bool, lemmatize: bool, average_polls_stats: bool,
                        top_posts_stats: bool, word_cloud: bool, stop_words: list):
         """
         Updates optional parameters.
         :param n_words: number of words in top words list
+        :param n_posts: number of posts in top posts and reactions
         :param top_3_number_of_words: top 3 number pf words checkbox position
         :param lemmatize: lemmatizes checkbox position
         :param average_polls_stats: average polls stats checkbox position
@@ -469,6 +469,7 @@ class ChatStats(ChatGetter):
         :return: None
         """
         self.n_words = n_words
+        self.n_posts = n_posts
         self.top_3_number_of_words = top_3_number_of_words
         self.lemmatize = lemmatize
         self.average_polls_stats = average_polls_stats

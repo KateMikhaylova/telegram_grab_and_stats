@@ -40,6 +40,11 @@ class WindowThread(QtCore.QThread):
                                                      self.window.box_week_statistic.isChecked(),
                                                      self.window.box_month_statistic.isChecked(),
                                                      self.window.box_year_statistic.isChecked(), self.loop)
+
+            if self.window.box_top_reactions_posts.isChecked() or self.window.box_top_reactions_comments.isChecked():
+                ...  # TODO: add the function get_posts_reactions()
+
+
             self.loop.run_until_complete(self.week_stats.send_post(message))
         else:
             self.loop.run_until_complete(self.week_stats.send_post(

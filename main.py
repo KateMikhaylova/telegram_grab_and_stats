@@ -24,6 +24,6 @@ if __name__ == '__main__':
         app = QtWidgets.QApplication(sys.argv)
         window = QtWidgets.QWidget()
         ui = Window()
-        ui.setup(window, telethon_client, loop)
+        ui.setup(window, telethon_client, pyrogram_client, loop)
         window.show()
         sys.exit(app.exec_())
