@@ -9,13 +9,13 @@ class Window(object):
     def __init__(self):
         self.uploading = None
 
-    def send_post(self, chat_stats: ChatStats, buttons_channel_list: list, client: TelegramClient,
+    def send_post(self, chat_stats: ChatStats, buttons_channel_list: list, telethon_client: TelegramClient,
                   loop):
         """
         Launches a thread.
         :param chat_stats: ChatStats entity
         :param buttons_channel_list: channels list
-        :param client: telegram client
+        :param telethon_client: telegram client
         :param loop: event loop
         """
         self.pushButton.setEnabled(False)
@@ -42,7 +42,7 @@ class Window(object):
         progress_bar_range = (chat_stats.date_range[1] - chat_stats.date_range[0]).days
         self.progressBar.setRange(0, progress_bar_range)
 
-        self.uploading = WindowThread(client, loop, chat_stats, buttons_channel_list, self, parent=None)
+        self.uploading = WindowThread(telethon_client, loop, chat_stats, buttons_channel_list, self, parent=None)
         self.uploading.start()
         self.uploading.any_signal.connect(self.progress_bar_counter)
 
@@ -53,16 +53,16 @@ class Window(object):
         """
         self.progressBar.setValue(counter)
 
-    def setup(self, window: QtWidgets.QWidget, client: TelegramClient, loop):
+    def setup(self, window: QtWidgets.QWidget, telethon_client: TelegramClient, loop):
         """
         Creates GUI window.
         :param window: main window
-        :param client: telegram client
+        :param telethon_client: telegram client
         :param loop: event loop
         """
-        chat_stats = ChatStats(client)
+        chat_stats = ChatStats(telethon_client)
 
-        client.loop.run_until_complete(chat_stats.get_channel())
+        telethon_client.loop.run_until_complete(chat_stats.get_channel())
 
         window.setObjectName("Form")
         window.resize(790, 300)
@@ -273,7 +273,7 @@ class Window(object):
         self.pushButton = QtWidgets.QPushButton(window)
 
         self.pushButton.clicked.connect(
-            lambda: self.send_post(chat_stats, buttons, client, loop))  # sends post to telegram account if clicked
+            lambda: self.send_post(chat_stats, buttons, telethon_client, loop))  # sends post to telegram account if clicked
 
         self.pushButton.setObjectName("pushButton")
         self.horizontalLayout_2.addWidget(self.pushButton)

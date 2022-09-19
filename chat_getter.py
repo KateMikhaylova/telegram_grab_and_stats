@@ -12,11 +12,11 @@ from time import sleep
 
 
 class ChatGetter:
-    def __init__(self, client: TelegramClient):
+    def __init__(self, telethon_client: TelegramClient):
         """
-        :param client: telegram client
+        :param telethon_client: telegram client
         """
-        self.client = client
+        self.telethon_client = telethon_client
         self.channels = None  # list of channels
         self.tg_chat = None  # selected channel
         self.date_range = None  # date interval [date_start, date_end]
@@ -26,12 +26,12 @@ class ChatGetter:
         Gets list of all channels and updates the attribute self.channels
         """
         channels = []
-        result = await self.client(GetDialogsRequest(offset_date=None,
-                                                     offset_id=0,
-                                                     offset_peer=InputPeerEmpty(),
-                                                     limit=100,
-                                                     hash=0
-                                                     ))
+        result = await self.telethon_client(GetDialogsRequest(offset_date=None,
+                                                              offset_id=0,
+                                                              offset_peer=InputPeerEmpty(),
+                                                              limit=100,
+                                                              hash=0
+                                                              ))
 
         for channel in result.chats:
             if type(channel) == Channel:
@@ -57,15 +57,15 @@ class ChatGetter:
         all_messages = []
 
         while True:
-            history = await self.client(GetHistoryRequest(peer=self.tg_chat,
-                                                          offset_id=offset_msg,
-                                                          offset_date=date_offset,
-                                                          add_offset=0,
-                                                          limit=limit_msg,
-                                                          max_id=0,
-                                                          min_id=0,
-                                                          hash=0
-                                                          ))
+            history = await self.telethon_client(GetHistoryRequest(peer=self.tg_chat,
+                                                                   offset_id=offset_msg,
+                                                                   offset_date=date_offset,
+                                                                   add_offset=0,
+                                                                   limit=limit_msg,
+                                                                   max_id=0,
+                                                                   min_id=0,
+                                                                   hash=0
+                                                                   ))
 
             if not history.messages:
                 return all_messages
@@ -93,8 +93,8 @@ class ChatGetter:
         :return: list of comments from post
         """
         comments_list = []
-        async for message in self.client.iter_messages(self.tg_chat,
-                                                       reply_to=post_id):
+        async for message in self.telethon_client.iter_messages(self.tg_chat,
+                                                                reply_to=post_id):
             comments_list.append(message)
         return comments_list
 
@@ -104,7 +104,7 @@ class ChatGetter:
         :param user_id: User id
         :return: user object by id <class 'telethon.tl.types.User'>
         """
-        user = await self.client.get_entity(user_id)
+        user = await self.telethon_client.get_entity(user_id)
         return user
 
     def get_links(self, user_ids: list) -> list:
@@ -116,7 +116,7 @@ class ChatGetter:
         links = []
 
         for user_id in user_ids:
-            from_user = self.client.loop.run_until_complete(self.get_user_by_id(user_id))  # gets user information
+            from_user = self.telethon_client.loop.run_until_complete(self.get_user_by_id(user_id))  # gets user information
 
             if from_user.username is not None:
                 links += [((from_user.first_name if from_user.first_name is not None else "")
@@ -132,10 +132,10 @@ class ChatGetter:
                           + f'(tg://user?id={user_id})']
         return links
 
-    def get_posts_reactions(self, app: Client) -> list:
-        with app:
+    def get_posts_reactions(self, pyrogram_client: Client) -> list:
+        with pyrogram_client:
             chat_id = '-100' + str(self.tg_chat.id)
-            chat = app.get_chat(chat_id)
+            chat = pyrogram_client.get_chat(chat_id)
 
             offset_msg = 0
             limit_msg = 100
@@ -144,11 +144,11 @@ class ChatGetter:
             reactions_dict = {}
 
             while True:
-                messages = list(app.get_chat_history(chat_id=chat_id,
-                                                     limit=limit_msg,
-                                                     offset_id=offset_msg,
-                                                     offset_date=date_offset
-                                                     ))
+                messages = list(pyrogram_client.get_chat_history(chat_id=chat_id,
+                                                                 limit=limit_msg,
+                                                                 offset_id=offset_msg,
+                                                                 offset_date=date_offset
+                                                                 ))
                 if not messages:
                     return sorted(reactions_dict.items(), reverse=True)
                 for message in messages:
@@ -175,10 +175,10 @@ class ChatGetter:
                                 reactions_dict[reactions].append(f'https://t.me/{message.chat.username}/{message.id}')
                 offset_msg = message_id
 
-    def get_comment_reactions(self, app: Client) -> list:
-        with app:
+    def get_comment_reactions(self, pyrogram_client: Client) -> list:
+        with pyrogram_client:
             chat_id = '-100' + str(self.tg_chat.id)
-            chat = app.get_chat(chat_id)
+            chat = pyrogram_client.get_chat(chat_id)
 
             offset_msg = 0
             limit_msg = 100
@@ -186,11 +186,11 @@ class ChatGetter:
 
             reactions_dict = {}
             while True:
-                messages = list(app.get_chat_history(chat_id=chat_id,
-                                                     limit=limit_msg,
-                                                     offset_id=offset_msg,
-                                                     offset_date=date_offset
-                                                     ))
+                messages = list(pyrogram_client.get_chat_history(chat_id=chat_id,
+                                                                 limit=limit_msg,
+                                                                 offset_id=offset_msg,
+                                                                 offset_date=date_offset
+                                                                 ))
                 if not messages:
                     return sorted(reactions_dict.items(), reverse=True)
                 for message in messages:
@@ -208,7 +208,7 @@ class ChatGetter:
                         # равно приведет в чат
                         sleep(1)
                         try:
-                            for comment in app.get_discussion_replies(chat_id=chat_id, message_id=message.id):
+                            for comment in pyrogram_client.get_discussion_replies(chat_id=chat_id, message_id=message.id):
                                 if comment.reactions is not None:
                                     reactions = 0
                                     for element in comment.reactions.reactions:

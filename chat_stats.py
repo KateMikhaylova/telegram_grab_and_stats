@@ -19,8 +19,8 @@ from utils import date_range
 
 
 class ChatStats(ChatGetter):
-    def __init__(self, client):
-        super().__init__(client)
+    def __init__(self, telethon_client):
+        super().__init__(telethon_client)
         self.lemmatize = None
         self.n_words = None
         self.top_3_number_of_words = None
@@ -453,7 +453,7 @@ class ChatStats(ChatGetter):
         else:
             file = None
 
-        await self.client.send_message(tg_chat, text, link_preview=False, file=file)
+        await self.telethon_client.send_message(tg_chat, text, link_preview=False, file=file)
 
     def options_update(self, n_words: int, top_3_number_of_words: bool, lemmatize: bool, average_polls_stats: bool,
                        top_posts_stats: bool, word_cloud: bool, stop_words: list):

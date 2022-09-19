@@ -9,17 +9,17 @@ from chat_stats import ChatStats
 class WindowThread(QtCore.QThread):
     any_signal = QtCore.pyqtSignal(int)
 
-    def __init__(self, client: TelegramClient, loop, chat_stats: ChatStats, buttons_channel_list: list,
+    def __init__(self, telethon_client: TelegramClient, loop, chat_stats: ChatStats, buttons_channel_list: list,
                  window, parent=None):
         """
-        :param client: telegram client
+        :param telethon_client: telegram client
         :param loop: event loop
         :param chat_stats: ChatStats entity
         :param buttons_channel_list: channels list
         :param window: main window
         """
         super(WindowThread, self).__init__(parent)
-        self.client = client
+        self.telethon_client = telethon_client
         self.loop = loop
         self.week_stats = chat_stats
         self.buttons_channel_list = buttons_channel_list
