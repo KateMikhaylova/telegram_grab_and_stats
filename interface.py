@@ -3,18 +3,20 @@ from chat_stats import ChatStats
 from interface_thread import WindowThread
 from telethon import TelegramClient
 from utils import *
+import os
 
 
 class Window(object):
     def __init__(self):
         self.uploading = None
 
-    def send_post(self, chat_stats: ChatStats, buttons_channel_list: list, client: TelegramClient,
-                  loop):
+    def send_post(self, chat_stats: ChatStats, buttons_channel_list: list, buttons_mask_list: list,
+                  client: TelegramClient, loop):
         """
         Launches a thread.
         :param chat_stats: ChatStats entity
         :param buttons_channel_list: channels list
+        :param buttons_mask_list: masks list
         :param client: telegram client
         :param loop: event loop
         """
@@ -44,7 +46,7 @@ class Window(object):
         progress_bar_range = (chat_stats.date_range[1] - chat_stats.date_range[0]).days
         self.progressBar.setRange(0, progress_bar_range)
 
-        self.uploading = WindowThread(client, loop, chat_stats, buttons_channel_list, self, parent=None)
+        self.uploading = WindowThread(client, loop, chat_stats, buttons_channel_list, buttons_mask_list, self, parent=None)
         self.uploading.start()
         self.uploading.any_signal.connect(self.progress_bar_counter)
 
@@ -67,8 +69,8 @@ class Window(object):
         client.loop.run_until_complete(chat_stats.get_channel())
 
         window.setObjectName("Form")
-        window.resize(790, 300)
-        window.setMaximumSize(QtCore.QSize(790, 300))
+        window.resize(950, 300)
+        window.setMaximumSize(QtCore.QSize(950, 300))
         self.verticalLayout_5 = QtWidgets.QVBoxLayout(window)
         self.verticalLayout_5.setObjectName("verticalLayout_5")
         self.horizontalLayout_4 = QtWidgets.QHBoxLayout()
@@ -275,6 +277,42 @@ class Window(object):
 
         self.verticalLayout_4.addWidget(self.pushButton_3, 0, QtCore.Qt.AlignLeft)
         self.horizontalLayout_4.addLayout(self.verticalLayout_4)
+
+        self.line_5 = QtWidgets.QFrame(window)
+        self.line_5.setFrameShape(QtWidgets.QFrame.VLine)
+        self.line_5.setFrameShadow(QtWidgets.QFrame.Sunken)
+        self.line_5.setObjectName("line_5")
+        self.horizontalLayout_4.addWidget(self.line_5)
+
+        self.verticalLayout_7 = QtWidgets.QVBoxLayout()
+        self.verticalLayout_7.setObjectName("verticalLayout_2")
+        self.label_8 = QtWidgets.QLabel(window)
+        self.label_8.setMaximumSize(QtCore.QSize(16777215, 20))
+        self.label_8.setObjectName("label_8")
+        self.verticalLayout_7.addWidget(self.label_8)
+
+        self.scrollArea2 = QtWidgets.QScrollArea(window)
+        self.scrollArea2.setMaximumSize(QtCore.QSize(500, 200))
+        self.scrollArea2.setWidgetResizable(True)
+        self.scrollArea2.setObjectName("scrollArea2")
+
+        self.scrollAreaWidgetContents2 = QtWidgets.QWidget()
+        self.scrollAreaWidgetContents2.setGeometry(QtCore.QRect(0, 0, 184, 242))
+        self.scrollAreaWidgetContents2.setObjectName("scrollAreaWidgetContents2")
+        self.verticalLayout6 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents2)
+        self.verticalLayout6.setObjectName("verticalLayout6")
+
+        self.pictures_text = ['случайный выбор'] + [text for text in os.listdir('img') if text.endswith('png')]
+        buttons2 = [QtWidgets.QRadioButton(self.scrollAreaWidgetContents2) for _ in range(len(self.pictures_text))]
+        buttons2[0].setChecked(True)
+        [button.setChecked(False) for button in buttons2[1:]]
+        [button.setObjectName(f"radioButton_{i}") for i, button in enumerate(buttons2, start=1)]
+        [self.verticalLayout6.addWidget(button) for button in buttons2]  # creates list of mask names
+
+        self.scrollArea2.setWidget(self.scrollAreaWidgetContents2)
+        self.verticalLayout_7.addWidget(self.scrollArea2)
+        self.horizontalLayout_4.addLayout(self.verticalLayout_7)
+
         self.verticalLayout_5.addLayout(self.horizontalLayout_4)
         self.line_3 = QtWidgets.QFrame(window)
         self.line_3.setFrameShape(QtWidgets.QFrame.HLine)
@@ -286,7 +324,7 @@ class Window(object):
         self.pushButton = QtWidgets.QPushButton(window)
 
         self.pushButton.clicked.connect(
-            lambda: self.send_post(chat_stats, buttons, client, loop))  # sends post to telegram account if clicked
+            lambda: self.send_post(chat_stats, buttons, buttons2, client, loop))  # sends post to telegram account if clicked
 
         self.pushButton.setObjectName("pushButton")
         self.horizontalLayout_2.addWidget(self.pushButton)
@@ -297,16 +335,20 @@ class Window(object):
         self.horizontalLayout_2.addWidget(self.progressBar)
         self.verticalLayout_5.addLayout(self.horizontalLayout_2)
 
-        self.retranslate_ui(window, buttons, chat_stats)
+        self.retranslate_ui(window, buttons, buttons2, chat_stats)
         QtCore.QMetaObject.connectSlotsByName(window)
 
-    def retranslate_ui(self, window: QtWidgets.QWidget, buttons: list, chat_stats: ChatStats):
+    def retranslate_ui(self, window: QtWidgets.QWidget, buttons: list, buttons2: list,
+                       chat_stats: ChatStats):
         _translate = QtCore.QCoreApplication.translate
         window.setWindowTitle(_translate("Form", "Solid Grab&Top"))
         self.label.setText(_translate("Form", "Группы:"))
 
         [button.setText(_translate("Form", f"{channel.title}")) for button, channel in
          zip(buttons, chat_stats.channels)]  # reads channel titles and assigns names to buttons
+
+        [button.setText(_translate("Form", f"{text}")) for button, text in
+         zip(buttons2, self.pictures_text)]  # reads channel titles and assigns names to buttons
 
         self.label_5.setText(_translate("Form", "Установка промежутка:"))
         self.box_week_number.setItemText(0, _translate("Form", "прошлая неделя"))
@@ -332,6 +374,7 @@ class Window(object):
         self.label_3.setText(_translate("Form", "до:"))
         self.label_6.setText(_translate("Form", "Дополнительный параметры:"))
         self.label_7.setText(_translate("Form", "Исключаемые слова:"))
+        self.label_8.setText(_translate("Form", "Список доступных масок:"))
         self.box_top_3_number_of_words.setText(_translate("Form", "Количество слов в топ 3"))
         self.box_lemmatize.setText(_translate("Form", "Лематизация топ слов"))
         self.box_average_polls_stats.setText(_translate("Form", "Средняя статистика тестов"))
