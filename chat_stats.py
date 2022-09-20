@@ -171,9 +171,9 @@ class ChatStats(ChatGetter):
                     else:
                         replies_dict[message.replies.replies].append(f'https://t.me/{self.tg_chat.username}/{message.id}')
 
-        views = sorted(views_dict.items(), reverse=True)
-        forwards = sorted(forwards_dict.items(), reverse=True)
-        replies = sorted(replies_dict.items(), reverse=True)
+        views = sorted(views_dict.items(), reverse=True)[:10]
+        forwards = sorted(forwards_dict.items(), reverse=True)[:10]
+        replies = sorted(replies_dict.items(), reverse=True)[:10]
 
         result = {'views': views, 'forwards': forwards, 'replies': replies}
 
@@ -304,25 +304,35 @@ class ChatStats(ChatGetter):
 
         return text
 
-    def text_posts_reactions(self, reactions_list):
+    def text_posts_reactions(self, reactions_list: list) -> str:
+        """
+        Creates text template with posts with most reactions quantity
+        :param reactions_list: list with reactions
+        :return: text template
+        """
         reactions = reactions_list[0][:self.n_posts]
+
         text = ''
+
         if len(reactions) == 0:
             return text
+
         if len(reactions) > 0:
-            text += '\n👍Самое большое количество реакций '
+            text += '\n\n👍Самое большое количество реакций '
             if len(reactions[0][1]) == 1:
                 text += f'({reactions[0][0]}) набрал этот [пост]({reactions[0][1][0]}).'
             elif len(reactions[0][1]) > 1:
                 text += f'({reactions[0][0]}) набрали эти посты: '
                 for i, post in enumerate(reactions[0][1], start=1):
                     text += f'[{i}]({post}) '
+
         if len(reactions) > 1:
             text += '\nСледом идут посты с количеством реакций '
             for reaction in reactions[1:]:
                 text += f'\n{reaction[0]} - '
                 for i, post in enumerate(reaction[1], start=1):
                     text += f'[{i}]({post}) '
+
         return text
 
     def text_top_viewed_forwarded_replied(self, top_vfr: dict) -> str:
@@ -337,13 +347,14 @@ class ChatStats(ChatGetter):
 
         text_views = ''
         if len(views) > 0:
-            text_views += '\n👀 Самое большое количество просмотров '
+            text_views += '\n\n👀 Самое большое количество просмотров '
             if len(views[0][1]) == 1:
                 text_views += f'({views[0][0]}) было у этого [поста]({views[0][1][0]}).'
             elif len(views[0][1]) > 1:
                 text_views += f'({views[0][0]}) было у этих постов: '
                 for i, post in enumerate(views[0][1], start=1):
                     text_views += f'[{i}]({post}) '
+
         if len(views) > 1:
             text_views += '\nСледом идут посты с количеством просмотров '
             for view in views[1:]:
@@ -353,13 +364,14 @@ class ChatStats(ChatGetter):
 
         text_fwd = ''
         if len(forwards) > 0:
-            text_fwd += '\n📨 Самое большое количество репостов '
+            text_fwd += '\n\n📨 Самое большое количество репостов '
             if len(forwards[0][1]) == 1:
                 text_fwd += f'({forwards[0][0]}) было у этого [поста]({forwards[0][1][0]}).'
             elif len(forwards[0][1]) > 1:
                 text_fwd += f'({forwards[0][0]}) было у этих постов: '
                 for i, post in enumerate(forwards[0][1], start=1):
                     text_fwd += f'[{i}]({post}) '
+
         if len(forwards) > 1:
             text_fwd += '\nСледом идут посты с количеством репостов '
             for forward in forwards[1:]:
@@ -369,13 +381,14 @@ class ChatStats(ChatGetter):
 
         text_replies = ''
         if len(replies) > 0:
-            text_replies += '\n💬 Самое большое количество комментариев '
+            text_replies += '\n\n💬 Самое большое количество комментариев '
             if len(replies[0][1]) == 1:
                 text_replies += f'({replies[0][0]}) было у этого [поста]({replies[0][1][0]}).'
             elif len(replies[0][1]) > 1:
                 text_replies += f'({replies[0][0]}) было у этих постов: '
                 for i, post in enumerate(replies[0][1], start=1):
                     text_replies += f'[{i}]({post}) '
+
         if len(replies) > 1:
             text_replies += '\nСледом идут посты с количеством комментариев '
             for reply in replies[1:]:
@@ -387,25 +400,35 @@ class ChatStats(ChatGetter):
 
         return text
 
-    def text_comments_reactions(self, reactions_list):
+    def text_comments_reactions(self, reactions_list: list) -> str:
+        """
+        Creates text template with comments with most reactions quantity
+        :param reactions_list: list with reactions
+        :return: text template
+        """
         reactions = reactions_list[1][:self.n_posts]
+
         text = ''
+
         if len(reactions) == 0:
             return text
+
         if len(reactions) > 0:
-            text += '\n🥰А еще у нас были комментарии, в которых авторы жгли не по-детски. Самое большое количество реакций '
+            text += '\n\n🥰А еще у нас были комментарии, в которых авторы жгли не по-детски. Самое большое количество реакций '
             if len(reactions[0][1]) == 1:
                 text += f'({reactions[0][0]}) набрал этот [комментарий]({reactions[0][1][0]}).'
             elif len(reactions[0][1]) > 1:
                 text += f'({reactions[0][0]}) набрали эти комментарии: '
                 for i, post in enumerate(reactions[0][1], start=1):
                     text += f'[{i}]({post}) '
+
         if len(reactions) > 1:
             text += '\nСледом идут чуть менее искрометные комментарии с количеством реакций '
             for reaction in reactions[1:]:
                 text += f'\n{reaction[0]} - '
                 for i, post in enumerate(reaction[1], start=1):
                     text += f'[{i}]({post}) '
+
         return text
 
     def stats_template(self, all_data: list, week_stats: bool, month_stats: bool, year_stats: bool, loop) -> str:

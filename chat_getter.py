@@ -3,11 +3,13 @@ from PyQt5.QtCore import pyqtBoundSignal
 from telethon import TelegramClient
 from telethon.tl.types import InputPeerEmpty, Channel
 from telethon.tl.functions.messages import GetDialogsRequest, GetHistoryRequest
+
 from pyrogram import Client
 from pyrogram.enums import ChatType
 from pyrogram.types.user_and_chats.user import User
 from pyrogram.types.user_and_chats.chat import Chat
 from pyrogram.errors.exceptions.bad_request_400 import MsgIdInvalid
+
 from time import sleep
 import datetime
 
@@ -134,7 +136,15 @@ class ChatGetter:
         return links
 
     def get_posts_reactions(self, pyrogram_client: Client) -> list:
+        """
+        Collects reactions from posts in channel/chat and/or reactions to comments to posts in channel or to all
+        comments in chat
+        :param pyrogram_client: pyrogram client to send requests to API
+        :return: list with two lists, first one with posts reactions, second with comments reactions, if some option is
+        not chosen corresponding inner list will be empty
+        """
         with pyrogram_client:
+
             chat_id = int('-100' + str(self.tg_chat.id))
             chat = pyrogram_client.get_chat(chat_id)
 
@@ -147,15 +157,18 @@ class ChatGetter:
             comments_reactions_dict = {}
 
             while True:
+
                 messages = list(pyrogram_client.get_chat_history(chat_id=chat_id,
                                                                  limit=limit_msg,
                                                                  offset_id=offset_msg,
                                                                  offset_date=date_offset
                                                                  ))
+
                 if not messages:
                     posts_reactions_dict = sorted(posts_reactions_dict.items(), reverse=True)[:10]
                     comments_reactions_dict = sorted(comments_reactions_dict.items(), reverse=True)[:10]
                     return [posts_reactions_dict, comments_reactions_dict]
+
                 for message in messages:
                     message_id = message.id
 
@@ -165,6 +178,7 @@ class ChatGetter:
                         return [posts_reactions_dict, comments_reactions_dict]
 
                     if self.top_posts_reactions:
+
                         if chat.type == ChatType.CHANNEL:
                             if message.reactions is not None:
                                 reactions = 0
@@ -174,6 +188,7 @@ class ChatGetter:
                                     posts_reactions_dict[reactions] = [f'https://t.me/{message.chat.username}/{message.id}']
                                 else:
                                     posts_reactions_dict[reactions].append(f'https://t.me/{message.chat.username}/{message.id}')
+
                         elif chat.type == ChatType.GROUP or chat.type == ChatType.SUPERGROUP:
                             if type(message.sender_chat) == Chat and message.reactions is not None:
                                 reactions = 0
@@ -183,7 +198,9 @@ class ChatGetter:
                                     posts_reactions_dict[reactions] = [f'https://t.me/{message.chat.username}/{message.id}']
                                 else:
                                     posts_reactions_dict[reactions].append(f'https://t.me/{message.chat.username}/{message.id}')
+
                     if self.top_comments_reactions:
+
                         if chat.type == ChatType.CHANNEL:
                             # если к отдельному посту отключены комментарии, получаем ошибку. В pythontalk например есть
                             # такой пост https://t.me/pythontalk_ru/97. Или обходить ее вручную (if message.id == 97:
@@ -213,7 +230,6 @@ class ChatGetter:
                         elif chat.type == ChatType.GROUP or chat.type == ChatType.SUPERGROUP:
 
                             if type(message.from_user) == User and message.reactions is not None:
-
                                 reactions = 0
                                 for element in message.reactions.reactions:
                                     reactions += element.count
@@ -222,4 +238,5 @@ class ChatGetter:
                                 else:
                                     comments_reactions_dict[reactions].append(
                                         f'https://t.me/{message.chat.username}/{message.id}')
+
                 offset_msg = message_id
