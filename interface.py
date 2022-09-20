@@ -359,7 +359,7 @@ class Window(object):
         self.pushButton = QtWidgets.QPushButton(window)
 
         self.pushButton.clicked.connect(
-            lambda: self.send_post(chat_stats, buttons, buttons2 telethon_client, pyrogram_client, loop))  # sends post to telegram account if clicked
+            lambda: self.send_post(chat_stats, buttons, buttons2, telethon_client, pyrogram_client, loop))  # sends post to telegram account if clicked
 
         self.pushButton.setObjectName("pushButton")
         self.horizontalLayout_2.addWidget(self.pushButton)
