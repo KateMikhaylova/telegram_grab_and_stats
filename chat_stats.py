@@ -32,6 +32,7 @@ class ChatStats(ChatGetter):
         self.word_cloud = None
         self.average_polls_stats = None
         self.reaction_list = None
+        self.mask = None
 
     def top_3(self, all_data: list, storage: Queue, loop):
         """
@@ -88,6 +89,8 @@ class ChatStats(ChatGetter):
             if type(message.from_id) == PeerUser and message.message:
                 text += ' ' + message.message.lower()
 
+        url_pattern = re.compile(r'(https?://[\S]+)')
+        text = url_pattern.sub('', text)
         split_pattern = re.compile(r'[а-яёa-z]+(?:-[а-яёa-z]+)?', re.I)
         tokens = split_pattern.findall(text)
 
@@ -110,13 +113,14 @@ class ChatStats(ChatGetter):
             pymorphed_tokens = []
             for token in tokens:
                 pymorphed_tokens.append(morph.parse(token)[0].normal_form)
+            pymorphed_tokens = [token.replace('ё', 'е') for token in pymorphed_tokens]
             pymorphed_tokens = [token for token in pymorphed_tokens if token not in all_stopwords]
             pymorphed = Counter(pymorphed_tokens)
 
             if self.word_cloud:
-                self.cloud_words = {word.replace('ё', 'е'): quantity for word, quantity in pymorphed.most_common(200)}
+                self.cloud_words = {word: quantity for word, quantity in pymorphed.most_common(200)}
 
-            top_words = {word.replace('ё', 'е'): quantity for word, quantity in pymorphed.most_common(self.n_words)}
+            top_words = {word: quantity for word, quantity in pymorphed.most_common(self.n_words)}
             storage.put(top_words)
 
         if self.word_cloud:
@@ -127,15 +131,15 @@ class ChatStats(ChatGetter):
         Creates word cloud based on top 200 most common words in messages. Picture for word cloud mask may be changed
         :return: None
         """
-        mask = array(Image.open(os.path.join('img', 'python_logo.png')))
-        word_cloud = WordCloud(mask=mask).generate_from_frequencies(self.cloud_words)
+        mask = array(Image.open(os.path.join('img', self.mask)))
+        word_cloud = WordCloud(mask=mask, background_color='White').generate_from_frequencies(self.cloud_words)
 
         image_colors = ImageColorGenerator(mask)
         plt.figure(frameon=False, figsize=[15, 15])
         plt.imshow(word_cloud.recolor(color_func=image_colors), interpolation='bilinear')
         plt.axis("off")
         plt.subplots_adjust(left=0, bottom=0, right=1, top=1)
-        plt.savefig(os.path.join(os.getcwd(), 'img', f'word_cloud.png'))
+        plt.savefig(os.path.join(os.getcwd(), 'img', 'temp', 'word_cloud.png'))
 
     def top_viewed_forwarded_replied(self, all_data: list, storage: Queue):
         """
@@ -211,12 +215,15 @@ class ChatStats(ChatGetter):
                                                             else '☹')]
         storage.put(polls_stats_dict)
 
-    def text_head(self, week_stats: bool, month_stats: bool, year_stats: bool) -> str:
+    def text_head(self, week_stats: bool, month_stats: bool, year_stats: bool,
+                  quarter_stats: bool, half_year_stats: bool) -> str:
         """
         Creates text head for template text
         :param week_stats: if week period is chosen
         :param month_stats: if month period is chosen
         :param year_stats: if year period is chosen
+        :param quarter_stats: if quarter period is chosen
+        :param half_year_stats: if half-year period is chosen
         :return: text head
         """
         text = '🗓Итоги '
@@ -227,6 +234,10 @@ class ChatStats(ChatGetter):
             text += 'месяца '
         elif year_stats:
             text += 'года '
+        elif quarter_stats:
+            text += 'квартала '
+        elif half_year_stats:
+            text += 'полугодия '
 
         text += f"({self.date_range[0].strftime('%d/%m/%Y')} - {self.date_range[1].strftime('%d/%m/%Y')})\n\n"
 
@@ -431,13 +442,16 @@ class ChatStats(ChatGetter):
 
         return text
 
-    def stats_template(self, all_data: list, week_stats: bool, month_stats: bool, year_stats: bool, loop) -> str:
+    def stats_template(self, all_data: list, week_stats: bool, month_stats: bool, year_stats: bool,
+                       quarter_stats: bool, half_year_stats: bool, loop) -> str:
         """
         Creates text for week results
         :param all_data: all data from chat
         :param week_stats: position of GUI 'box_week_statistic'
         :param month_stats: position of GUI 'box_month_statistic'
         :param year_stats: position of GUI 'box_year_statistic'
+        :param quarter_stats: position of GUI 'box_quarter_statistic'
+        :param half_year_stats: position of GUI 'box_half_year_statistic'
         :param loop: event loop
         """
         storage1 = Queue()  # creates containers for storing values
@@ -457,7 +471,7 @@ class ChatStats(ChatGetter):
         polls_stats = storage3.get()
         top_viewed_forwarded_replied = storage4.get()
 
-        template_text = (self.text_head(week_stats, month_stats, year_stats)
+        template_text = (self.text_head(week_stats, month_stats, year_stats, quarter_stats, half_year_stats)
                          + self.text_top_3(top_3)
                          + self.text_top_words(top_words)
                          + self.text_polls_stats(polls_stats)
@@ -476,7 +490,7 @@ class ChatStats(ChatGetter):
         """
 
         if self.word_cloud and self.cloud_words:
-            file = os.path.join('img', 'word_cloud.png')
+            file = os.path.join('img', 'temp', 'word_cloud.png')
         else:
             file = None
 
@@ -514,7 +528,8 @@ class ChatStats(ChatGetter):
 
     def date_update(self, week_number: int, month_number: int, year_number: int,
                     custom_date_start: list, custom_date_end: list,
-                    week_statistic: bool, month_statistic: bool, year_statistic: bool, custom_statistic: bool):
+                    week_statistic: bool, month_statistic: bool, year_statistic: bool,
+                    quarter_statistic: bool, half_year_statistic: bool, custom_statistic: bool):
         """
         Updates the attribute self.date_range
         :param week_number: week number
@@ -525,6 +540,8 @@ class ChatStats(ChatGetter):
         :param week_statistic: week statistic checkbox position
         :param month_statistic: month statistic checkbox position
         :param year_statistic: year statistic checkbox position
+        :param quarter_statistic: quarter statistic checkbox position
+        :param half_year_statistic: half-year statistic checkbox position
         :param custom_statistic: custom statistic checkbox position
         :return:
         """
@@ -533,4 +550,5 @@ class ChatStats(ChatGetter):
                                datetime(*custom_date_end).date()]  # sets custom date range
         else:
             self.date_range = date_range(week_number, month_number, year_number,
-                                         week_statistic, month_statistic, year_statistic)
+                                         week_statistic, month_statistic, year_statistic,
+                                         quarter_statistic, half_year_statistic)

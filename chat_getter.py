@@ -127,12 +127,10 @@ class ChatGetter:
                            + (from_user.last_name if from_user.last_name is not None else "")).strip()
                           + f'(@{from_user.username})']
             else:
-                links += ['['
-                          + ((from_user.first_name if from_user.first_name is not None else "")
-                             + " "
-                             + (from_user.last_name if from_user.last_name is not None else "")).strip()
-                          + ']'
-                          + f'(tg://user?id={user_id})']
+                links += [((from_user.first_name if from_user.first_name is not None else "")
+                          + " "
+                          + (from_user.last_name if from_user.last_name is not None else "")).strip()
+                          + f' tg://user?id={user_id}']
         return links
 
     def get_posts_reactions(self, pyrogram_client: Client) -> list:
