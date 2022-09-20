@@ -5,6 +5,7 @@ import asyncio
 from interface import Window
 from PyQt5 import QtWidgets
 from telethon import TelegramClient
+from pyrogram import Client
 
 
 config = configparser.ConfigParser()
@@ -16,12 +17,13 @@ api_hash = config['Telegram']['api_hash']
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
 
-    client = TelegramClient(phone, int(api_id), api_hash, loop=loop)
+    telethon_client = TelegramClient(phone, int(api_id), api_hash, loop=loop)
+    pyrogram_client = Client('my_account', api_id=api_id, api_hash=api_hash)
 
-    with client:
+    with telethon_client:
         app = QtWidgets.QApplication(sys.argv)
         window = QtWidgets.QWidget()
         ui = Window()
-        ui.setup(window, client, loop)
+        ui.setup(window, telethon_client, pyrogram_client, loop)
         window.show()
         sys.exit(app.exec_())

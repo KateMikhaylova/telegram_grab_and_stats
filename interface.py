@@ -2,6 +2,7 @@ from PyQt5 import QtCore
 from chat_stats import ChatStats
 from interface_thread import WindowThread
 from telethon import TelegramClient
+from pyrogram import Client
 from utils import *
 import os
 
@@ -11,22 +12,26 @@ class Window(object):
         self.uploading = None
 
     def send_post(self, chat_stats: ChatStats, buttons_channel_list: list, buttons_mask_list: list,
-                  client: TelegramClient, loop):
+                  telethon_client: TelegramClient, pyrogram_client: Client, loop):
         """
         Launches a thread.
         :param chat_stats: ChatStats entity
         :param buttons_channel_list: channels list
         :param buttons_mask_list: masks list
-        :param client: telegram client
+        :param telethon_client: telegram client
+        :param pyrogram_client: pyrogram client
         :param loop: event loop
         """
         self.pushButton.setEnabled(False)
 
         chat_stats.options_update(self.box_n_words.value(),
+                                  self.box_n_posts.value(),
                                   self.box_top_3_number_of_words.isChecked(),
                                   self.box_lemmatize.isChecked(),
                                   self.box_average_polls_stats.isChecked(),
                                   self.box_top_posts_stats.isChecked(),
+                                  self.box_top_reactions_posts.isChecked(),
+                                  self.box_top_reactions_comments.isChecked(),
                                   self.box_word_cloud.isChecked(),
                                   get_text_from_box(self.listWidget))
 
@@ -46,7 +51,8 @@ class Window(object):
         progress_bar_range = (chat_stats.date_range[1] - chat_stats.date_range[0]).days
         self.progressBar.setRange(0, progress_bar_range)
 
-        self.uploading = WindowThread(client, loop, chat_stats, buttons_channel_list, buttons_mask_list, self, parent=None)
+        self.uploading = WindowThread(telethon_client, pyrogram_client,
+                                      loop, chat_stats, buttons_channel_list, buttons_mask_list, self, parent=None)
         self.uploading.start()
         self.uploading.any_signal.connect(self.progress_bar_counter)
 
@@ -57,16 +63,17 @@ class Window(object):
         """
         self.progressBar.setValue(counter)
 
-    def setup(self, window: QtWidgets.QWidget, client: TelegramClient, loop):
+    def setup(self, window: QtWidgets.QWidget, telethon_client: TelegramClient, pyrogram_client: Client, loop):
         """
         Creates GUI window.
         :param window: main window
-        :param client: telegram client
+        :param telethon_client: telegram client
+        :param pyrogram_client: pyrogram_client
         :param loop: event loop
         """
-        chat_stats = ChatStats(client)
+        chat_stats = ChatStats(telethon_client)
 
-        client.loop.run_until_complete(chat_stats.get_channel())
+        telethon_client.loop.run_until_complete(chat_stats.get_channel())
 
         window.setObjectName("Form")
         window.resize(950, 300)
@@ -217,10 +224,37 @@ class Window(object):
         self.box_average_polls_stats.setChecked(False)
         self.box_average_polls_stats.setObjectName("checkBox_15")
         self.verticalLayout_3.addWidget(self.box_average_polls_stats)
+
+        self.horizontalLayout_5 = QtWidgets.QHBoxLayout()
+        self.verticalLayout_6 = QtWidgets.QVBoxLayout()
         self.box_top_posts_stats = QtWidgets.QCheckBox(window)
         self.box_top_posts_stats.setChecked(False)
         self.box_top_posts_stats.setObjectName("checkBox_15")
-        self.verticalLayout_3.addWidget(self.box_top_posts_stats)
+        self.verticalLayout_6.addWidget(self.box_top_posts_stats)
+        self.box_top_reactions_posts = QtWidgets.QCheckBox(window)
+        self.box_top_reactions_posts.setChecked(False)
+        self.box_top_reactions_posts.setObjectName("checkBox_15")
+        self.verticalLayout_6.addWidget(self.box_top_reactions_posts)
+        self.box_top_reactions_comments = QtWidgets.QCheckBox(window)
+        self.box_top_reactions_comments.setChecked(False)
+        self.box_top_reactions_comments.setObjectName("checkBox_15")
+        self.verticalLayout_6.addWidget(self.box_top_reactions_comments)
+        self.horizontalLayout_5.addLayout(self.verticalLayout_6)
+
+        self.line_5 = QtWidgets.QFrame(window)
+        self.line_5.setFrameShape(QtWidgets.QFrame.VLine)
+        self.line_5.setFrameShadow(QtWidgets.QFrame.Sunken)
+        self.line_5.setObjectName("line_4")
+        self.horizontalLayout_5.addWidget(self.line_5)
+
+        self.box_n_posts = QtWidgets.QSpinBox(window)
+        self.box_n_posts.setMaximum(10)
+        self.box_n_posts.setProperty("value", 1)
+        self.box_n_posts.setObjectName("spinBox")
+        self.horizontalLayout_5.addWidget(self.box_n_posts)
+        self.verticalLayout_3.addLayout(self.horizontalLayout_5)
+
+
         self.box_word_cloud = QtWidgets.QCheckBox(window)
         self.box_word_cloud.setChecked(False)
         self.box_word_cloud.setObjectName("checkBox_17")
@@ -231,6 +265,7 @@ class Window(object):
         self.label_4.setObjectName("label_4")
         self.horizontalLayout.addWidget(self.label_4)
         self.box_n_words = QtWidgets.QSpinBox(window)
+        self.box_n_words.setMaximum(10)
         self.box_n_words.setProperty("value", 7)
         self.box_n_words.setObjectName("spinBox")
         self.horizontalLayout.addWidget(self.box_n_words)
@@ -324,7 +359,7 @@ class Window(object):
         self.pushButton = QtWidgets.QPushButton(window)
 
         self.pushButton.clicked.connect(
-            lambda: self.send_post(chat_stats, buttons, buttons2, client, loop))  # sends post to telegram account if clicked
+            lambda: self.send_post(chat_stats, buttons, buttons2 telethon_client, pyrogram_client, loop))  # sends post to telegram account if clicked
 
         self.pushButton.setObjectName("pushButton")
         self.horizontalLayout_2.addWidget(self.pushButton)
@@ -379,6 +414,8 @@ class Window(object):
         self.box_lemmatize.setText(_translate("Form", "Лематизация топ слов"))
         self.box_average_polls_stats.setText(_translate("Form", "Средняя статистика тестов"))
         self.box_top_posts_stats.setText(_translate("Form", "Топ постов"))
+        self.box_top_reactions_posts.setText(_translate("Form", "Топ реакций(посты)"))
+        self.box_top_reactions_comments.setText(_translate("Form", "Топ реакций(комментарии)"))
         self.box_word_cloud.setText(_translate("Form", "Облако слов"))
         self.label_4.setText(_translate("Form", "Количество топ слов:"))
         self.pushButton_2.setText(_translate("Form", "Добавить"))
