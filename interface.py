@@ -33,6 +33,7 @@ class Window(object):
                                   self.box_top_reactions_posts.isChecked(),
                                   self.box_top_reactions_comments.isChecked(),
                                   self.box_longest_comment.isChecked(),
+                                  self.box_message_streak.isChecked(),
                                   self.box_word_cloud.isChecked(),
                                   get_text_from_box(self.listWidget))
 
@@ -254,11 +255,16 @@ class Window(object):
         self.box_n_posts.setObjectName("spinBox")
         self.horizontalLayout_5.addWidget(self.box_n_posts)
         self.verticalLayout_3.addLayout(self.horizontalLayout_5)
-
+        
         self.box_longest_comment = QtWidgets.QCheckBox(window)
         self.box_longest_comment.setChecked(False)
         self.box_longest_comment.setObjectName("checkBox_17")
         self.verticalLayout_3.addWidget(self.box_longest_comment)
+        
+        self.box_message_streak = QtWidgets.QCheckBox(window)
+        self.box_message_streak.setChecked(False)
+        self.box_message_streak.setObjectName("checkBox_15")
+        self.verticalLayout_3.addWidget(self.box_message_streak)
 
         self.box_word_cloud = QtWidgets.QCheckBox(window)
         self.box_word_cloud.setChecked(False)
@@ -422,6 +428,7 @@ class Window(object):
         self.box_top_reactions_posts.setText(_translate("Form", "Топ реакций(посты)"))
         self.box_top_reactions_comments.setText(_translate("Form", "Топ реакций(комментарии)"))
         self.box_longest_comment.setText(_translate("Form", "Самый длинный комментарий"))
+        self.box_message_streak.setText(_translate("Form", "Стрик сообщений"))
         self.box_word_cloud.setText(_translate("Form", "Облако слов"))
         self.label_4.setText(_translate("Form", "Количество топ слов:"))
         self.pushButton_2.setText(_translate("Form", "Добавить"))

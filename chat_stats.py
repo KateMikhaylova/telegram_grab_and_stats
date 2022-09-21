@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from nltk.corpus import stopwords
 from collections import defaultdict, Counter
-from telethon.tl.types import PeerUser, MessageMediaPoll, PeerChannel
+from telethon.tl.types import PeerUser, MessageMediaPoll, PeerChannel, MessageService
 from chat_getter import ChatGetter
 from threading import Thread
 from queue import Queue
@@ -27,6 +27,9 @@ class ChatStats(ChatGetter):
         self.top_3_number_of_words = None
         self.stop_words = None
         self.top_posts_stats = None
+        self.top_posts_reactions = None
+        self.top_comments_reactions = None
+        self.message_streak = None
         self.longest_comment = None
         self.word_cloud = None
         self.average_polls_stats = None
@@ -181,6 +184,64 @@ class ChatStats(ChatGetter):
         result = {'views': views, 'forwards': forwards, 'replies': replies}
 
         storage.put(result)
+
+    def get_message_streak(self, all_data: list, storage: Queue):
+        """
+        Searches for longest message strike in chat
+        :param all_data: all data from chat
+        :param storage: container for returning value
+        """
+
+        streak_dict = {'top_streak': 3,
+                       'top_message': {}}
+        counter = 0
+        counter_user = None
+        counter_msg_id = ''
+        grouped_id = None
+
+        for message in all_data:
+
+            if type(message) == MessageService:  # skip service messages
+                continue
+
+            if type(message.from_id) == PeerChannel:  # message from channel resets strike but not counted itself
+                if counter > streak_dict['top_streak']:
+                    streak_dict['top_streak'] = counter
+                    streak_dict['top_message'] = {counter_msg_id: counter_user}
+                elif counter == streak_dict['top_streak']:
+                    streak_dict['top_message'][counter_msg_id] = counter_user
+                counter = 0
+                counter_user = None
+                counter_msg_id = ''
+
+            if type(message.from_id) == PeerUser:
+
+                if message.from_id.user_id != counter_user:  # if user is not the same
+                    if counter > streak_dict['top_streak']:
+                        streak_dict['top_streak'] = counter
+                        streak_dict['top_message'] = {counter_msg_id: counter_user}
+                    elif counter == streak_dict['top_streak']:
+                        streak_dict['top_message'][counter_msg_id] = counter_user
+                    counter = 1
+                    counter_user = message.from_id.user_id
+                    counter_msg_id = f'https://t.me/{self.tg_chat.username}/{message.id}'
+
+                    if message.grouped_id is not None:
+                        grouped_id = message.grouped_id
+
+                else:
+                    if message.grouped_id is None:  # if message is not part of group
+                        counter += 1
+                        counter_msg_id = f'https://t.me/{self.tg_chat.username}/{message.id}'
+                    else:
+                        if message.grouped_id != grouped_id:
+                            counter += 1
+                            counter_msg_id = f'https://t.me/{self.tg_chat.username}/{message.id}'
+                            grouped_id = message.grouped_id
+                        else:
+                            counter_msg_id = f'https://t.me/{self.tg_chat.username}/{message.id}'
+
+        storage.put(streak_dict)
 
     def polls_stats(self, all_data: list, storage: Queue):
         """
@@ -462,6 +523,27 @@ class ChatStats(ChatGetter):
 
         return text
 
+    def text_message_streak(self, streak_dict: dict) -> str:
+        """
+        Creates text template for longest comments streak
+        :param streak_dict: dict with messages
+        :return:
+        """
+        text = ""
+        if len(streak_dict['top_message']) == 0:
+            return text
+        if len(streak_dict['top_message']) == 1:
+            text += f'\n\n🗣Самая длинная цепочка сообщений на этот раз состоит из {streak_dict["top_streak"]} сообщений, можете взглянуть на нее [тут]({list(streak_dict["top_message"].keys())[0]}).'
+        if len(streak_dict['top_message']) > 1:
+            text += f'\n\n🗣Самые длинные цепочки сообщений на этот раз состоят из {streak_dict["top_streak"]} сообщений каждая, можете взглянуть на них '
+            for i, comment in enumerate(streak_dict["top_message"].keys(), start=1):
+                if i == 1:
+                    text += f'[тут]({comment}) '
+                else:
+                    text += f'и [тут]({comment}) '
+
+        return text
+        
     def text_longest_comment(self, comment: list) -> str:
         """
         Creates text with the longest comment.
@@ -487,12 +569,14 @@ class ChatStats(ChatGetter):
         storage3 = Queue()
         storage4 = Queue()
         storage5 = Queue()
-
+        storage6 = Queue()
+        
         threads = [Thread(target=self.top_3, args=[all_data, storage1, loop]),
                    Thread(target=self.top_words, args=[all_data, storage2, self.stop_words]),
                    Thread(target=self.polls_stats, args=[all_data, storage3]),
                    Thread(target=self.top_viewed_forwarded_replied, args=[all_data, storage4]),
-                   Thread(target=self.get_longest_comment, args=[all_data, storage5])]  # creating threads
+                   Thread(target=self.get_longest_comment, args=[all_data, storage5]),
+                   Thread(target=self.get_message_streak, args=[all_data, storage6])]  # creating threads
         [thread.start() for thread in threads]
         [thread.join() for thread in threads]  # waits until all threads are done
 
@@ -501,6 +585,7 @@ class ChatStats(ChatGetter):
         polls_stats = storage3.get()
         top_viewed_forwarded_replied = storage4.get()
         longest_comment = storage5.get()
+        message_streak = storage6.get()
 
         template_text = (self.text_head(week_stats, month_stats, year_stats, quarter_stats, half_year_stats)
                          + self.text_top_3(top_3)
@@ -510,7 +595,8 @@ class ChatStats(ChatGetter):
                             if self.top_posts_stats else '')
                          + (self.text_posts_reactions(self.reaction_list) if self.top_posts_reactions else '')
                          + (self.text_comments_reactions(self.reaction_list) if self.top_comments_reactions else '')
-                         + (self.text_longest_comment(longest_comment) if self.longest_comment else ''))
+                         + (self.text_longest_comment(longest_comment) if self.longest_comment else '')
+                         + (self.text_message_streak(message_streak) if self.message_streak else ''))
 
         return template_text
 
@@ -531,7 +617,7 @@ class ChatStats(ChatGetter):
     def options_update(self, n_words: int, n_posts: int, top_3_number_of_words: bool, lemmatize: bool,
                        average_polls_stats: bool,
                        top_posts_stats: bool, top_posts_reactions: bool, top_comments_reactions: bool,
-                       longest_comment: bool, word_cloud: bool, stop_words: list):
+                       longest_comment: bool, message_streak: bool, word_cloud: bool, stop_words: list):
         """
         Updates optional parameters.
         :param n_words: number of words in top words list
@@ -543,6 +629,7 @@ class ChatStats(ChatGetter):
         :param top_posts_reactions: top posts reactions checkbox position
         :param top_comments_reactions: top comments reactions checkbox position
         :param longest_comment: longest comment checkbox position
+        :param message_streak: message streak checkbox position
         :param word_cloud: word cloud checkbox position
         :param stop_words: stopwords list
         :return: None
@@ -556,6 +643,7 @@ class ChatStats(ChatGetter):
         self.top_posts_reactions = top_posts_reactions
         self.top_comments_reactions = top_comments_reactions
         self.longest_comment = longest_comment
+        self.message_streak = message_streak
         self.word_cloud = word_cloud
         self.stop_words = stop_words
         self.cloud_words = None  # words for cloud words
