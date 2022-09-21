@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from nltk.corpus import stopwords
 from collections import defaultdict, Counter
-from telethon.tl.types import PeerUser, MessageMediaPoll, PeerChannel
+from telethon.tl.types import PeerUser, MessageMediaPoll, PeerChannel, MessageService
 from chat_getter import ChatGetter
 from threading import Thread
 from queue import Queue
@@ -182,6 +182,64 @@ class ChatStats(ChatGetter):
         result = {'views': views, 'forwards': forwards, 'replies': replies}
 
         storage.put(result)
+
+    def message_streak(self, all_data: list):
+        """
+        Searches for longest message strike in chat
+        :param all_data: all data from chat
+        :return:
+        """
+
+        streak_dict = {'top_streak': 3,
+                       'top_message': {}}
+        counter = 0
+        counter_user = None
+        counter_msg_id = ''
+        grouped_id = None
+
+        for message in all_data:
+
+            if type(message) == MessageService:  # skip service messages
+                continue
+
+            if type(message.from_id) == PeerChannel:  # message from channel resets strike but not counted itself
+                if counter > streak_dict['top_streak']:
+                    streak_dict['top_streak'] = counter
+                    streak_dict['top_message'] = {counter_msg_id: counter_user}
+                elif counter == streak_dict['top_streak']:
+                    streak_dict['top_message'][counter_msg_id] = counter_user
+                counter = 0
+                counter_user = None
+                counter_msg_id = ''
+
+            if type(message.from_id) == PeerUser:
+
+                if message.from_id.user_id != counter_user:  # if user is not the same
+                    if counter > streak_dict['top_streak']:
+                        streak_dict['top_streak'] = counter
+                        streak_dict['top_message'] = {counter_msg_id: counter_user}
+                    elif counter == streak_dict['top_streak']:
+                        streak_dict['top_message'][counter_msg_id] = counter_user
+                    counter = 1
+                    counter_user = message.from_id.user_id
+                    counter_msg_id = f'https://t.me/{self.tg_chat.username}/{message.id}'
+
+                    if message.grouped_id is not None:
+                        grouped_id = message.grouped_id
+
+                else:
+                    if message.grouped_id is None:  # if message is not part of group
+                        counter += 1
+                        counter_msg_id = f'https://t.me/{self.tg_chat.username}/{message.id}'
+                    else:
+                        if message.grouped_id != grouped_id:
+                            counter += 1
+                            counter_msg_id = f'https://t.me/{self.tg_chat.username}/{message.id}'
+                            grouped_id = message.grouped_id
+                        else:
+                            counter_msg_id = f'https://t.me/{self.tg_chat.username}/{message.id}'
+
+        return streak_dict
 
     def polls_stats(self, all_data: list, storage: Queue):
         """
@@ -439,6 +497,27 @@ class ChatStats(ChatGetter):
                 text += f'\n{reaction[0]} - '
                 for i, post in enumerate(reaction[1], start=1):
                     text += f'[{i}]({post}) '
+
+        return text
+
+    def text_message_streak(self, streak_dict: dict) -> str:
+        """
+        Creates text template for longest comments streak
+        :param streak_dict: dict with messages
+        :return:
+        """
+        text = ""
+        if len(streak_dict['top_message']) == 0:
+            return text
+        if len(streak_dict['top_message']) == 1:
+            text += f'\n\n🗣Самая длинная цепочка сообщений на этот раз состоит из {streak_dict["top_streak"]} сообщений, можете взглянуть на нее [тут]({list(streak_dict["top_message"].keys())[0]}).'
+        if len(streak_dict['top_message']) > 1:
+            text += f'\n\n🗣Самые длинные цепочки сообщений на этот раз состоят из {streak_dict["top_streak"]} сообщений каждая, можете взглянуть на них '
+            for i, comment in enumerate(streak_dict["top_message"].keys(), start=1):
+                if i == 1:
+                    text += f'[тут]({comment}) '
+                else:
+                    text += f'и [тут]({comment}) '
 
         return text
 
