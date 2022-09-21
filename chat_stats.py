@@ -462,7 +462,12 @@ class ChatStats(ChatGetter):
 
         return text
 
-    def text_longest_comment(self, comment):
+    def text_longest_comment(self, comment: list):
+        """
+        Creates text with the longest comment.
+        :param comment: longest comment [comment link, comment length]
+        :return: text with the longest comment
+        """
         return f'\n\nСамое большое количество символов ({comment[1]}) было у этого [комментария]({comment[0]}).'
 
     def stats_template(self, all_data: list, week_stats: bool, month_stats: bool, year_stats: bool,
