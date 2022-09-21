@@ -28,8 +28,9 @@ class ChatStats(ChatGetter):
         self.stop_words = None
         self.top_posts_stats = None
         self.top_posts_reactions = None
-        self.message_streak = None
         self.top_comments_reactions = None
+        self.message_streak = None
+        self.longest_comment = None
         self.word_cloud = None
         self.average_polls_stats = None
         self.reaction_list = None
@@ -273,6 +274,27 @@ class ChatStats(ChatGetter):
                                                             else '😐' if proportion <= 0.5 and votes == max_votes
                                                             else '☹')]
         storage.put(polls_stats_dict)
+
+    def get_longest_comment(self, all_data: list, storage: Queue):
+        """
+        Gets the longest comment from all data.
+        :param all_data: all data from chat
+        :param storage: container for returning value
+        """
+        message_id = None
+        max_length = 0
+
+        for message in all_data:
+            if type(message.from_id) == PeerUser and message.message:
+                http_pattern = re.compile(r'https?\S+\s?')
+                emoji_pattern = re.compile(r'[\U00010000-\U0010ffff]\s?')
+                text = http_pattern.sub(r'', message.message)
+                text = emoji_pattern.sub(r'', text)
+                if len(text) > max_length:
+                    max_length = len(text)
+                    message_id = message.id
+
+        storage.put([f'https://t.me/{self.tg_chat.username}/{message_id}', max_length])
 
     def text_head(self, week_stats: bool, month_stats: bool, year_stats: bool,
                   quarter_stats: bool, half_year_stats: bool) -> str:
@@ -521,6 +543,14 @@ class ChatStats(ChatGetter):
                     text += f'и [тут]({comment}) '
 
         return text
+        
+    def text_longest_comment(self, comment: list) -> str:
+        """
+        Creates text with the longest comment.
+        :param comment: longest comment [comment link, comment length]
+        :return: text with the longest comment
+        """
+        return f'\n\nСамое большое количество символов ({comment[1]}) было у этого [комментария]({comment[0]}).'
 
     def stats_template(self, all_data: list, week_stats: bool, month_stats: bool, year_stats: bool,
                        quarter_stats: bool, half_year_stats: bool, loop) -> str:
@@ -538,12 +568,14 @@ class ChatStats(ChatGetter):
         storage2 = Queue()
         storage3 = Queue()
         storage4 = Queue()
+        storage5 = Queue()
         storage6 = Queue()
-
+        
         threads = [Thread(target=self.top_3, args=[all_data, storage1, loop]),
                    Thread(target=self.top_words, args=[all_data, storage2, self.stop_words]),
                    Thread(target=self.polls_stats, args=[all_data, storage3]),
                    Thread(target=self.top_viewed_forwarded_replied, args=[all_data, storage4]),
+                   Thread(target=self.get_longest_comment, args=[all_data, storage5]),
                    Thread(target=self.get_message_streak, args=[all_data, storage6])]  # creating threads
         [thread.start() for thread in threads]
         [thread.join() for thread in threads]  # waits until all threads are done
@@ -552,6 +584,7 @@ class ChatStats(ChatGetter):
         top_words = storage2.get()
         polls_stats = storage3.get()
         top_viewed_forwarded_replied = storage4.get()
+        longest_comment = storage5.get()
         message_streak = storage6.get()
 
         template_text = (self.text_head(week_stats, month_stats, year_stats, quarter_stats, half_year_stats)
@@ -562,6 +595,7 @@ class ChatStats(ChatGetter):
                             if self.top_posts_stats else '')
                          + (self.text_posts_reactions(self.reaction_list) if self.top_posts_reactions else '')
                          + (self.text_comments_reactions(self.reaction_list) if self.top_comments_reactions else '')
+                         + (self.text_longest_comment(longest_comment) if self.longest_comment else '')
                          + (self.text_message_streak(message_streak) if self.message_streak else ''))
 
         return template_text
@@ -583,7 +617,7 @@ class ChatStats(ChatGetter):
     def options_update(self, n_words: int, n_posts: int, top_3_number_of_words: bool, lemmatize: bool,
                        average_polls_stats: bool,
                        top_posts_stats: bool, top_posts_reactions: bool, top_comments_reactions: bool,
-                       message_streak: bool, word_cloud: bool, stop_words: list):
+                       longest_comment: bool, message_streak: bool, word_cloud: bool, stop_words: list):
         """
         Updates optional parameters.
         :param n_words: number of words in top words list
@@ -594,6 +628,7 @@ class ChatStats(ChatGetter):
         :param top_posts_stats: top posts checkbox position
         :param top_posts_reactions: top posts reactions checkbox position
         :param top_comments_reactions: top comments reactions checkbox position
+        :param longest_comment: longest comment checkbox position
         :param message_streak: message streak checkbox position
         :param word_cloud: word cloud checkbox position
         :param stop_words: stopwords list
@@ -607,6 +642,7 @@ class ChatStats(ChatGetter):
         self.top_posts_stats = top_posts_stats
         self.top_posts_reactions = top_posts_reactions
         self.top_comments_reactions = top_comments_reactions
+        self.longest_comment = longest_comment
         self.message_streak = message_streak
         self.word_cloud = word_cloud
         self.stop_words = stop_words
