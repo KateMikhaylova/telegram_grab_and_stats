@@ -27,6 +27,7 @@ class ChatStats(ChatGetter):
         self.top_3_number_of_words = None
         self.stop_words = None
         self.top_posts_stats = None
+        self.longest_comment = None
         self.word_cloud = None
         self.average_polls_stats = None
         self.reaction_list = None
@@ -213,9 +214,9 @@ class ChatStats(ChatGetter):
                                                             else '☹')]
         storage.put(polls_stats_dict)
 
-    def longest_comment(self, all_data: list, storage: Queue):
+    def get_longest_comment(self, all_data: list, storage: Queue):
         """
-        Gets the longest comment.
+        Gets the longest comment from all data.
         :param all_data: all data from chat
         :param storage: container for returning value
         """
@@ -486,7 +487,7 @@ class ChatStats(ChatGetter):
                    Thread(target=self.top_words, args=[all_data, storage2, self.stop_words]),
                    Thread(target=self.polls_stats, args=[all_data, storage3]),
                    Thread(target=self.top_viewed_forwarded_replied, args=[all_data, storage4]),
-                   Thread(target=self.longest_comment, args=[all_data, storage5])]  # creating threads
+                   Thread(target=self.get_longest_comment, args=[all_data, storage5])]  # creating threads
         [thread.start() for thread in threads]
         [thread.join() for thread in threads]  # waits until all threads are done
 
@@ -504,7 +505,7 @@ class ChatStats(ChatGetter):
                             if self.top_posts_stats else '')
                          + (self.text_posts_reactions(self.reaction_list) if self.top_posts_reactions else '')
                          + (self.text_comments_reactions(self.reaction_list) if self.top_comments_reactions else '')
-                         + self.text_longest_comment(longest_comment))
+                         + (self.text_longest_comment(longest_comment) if self.longest_comment else ''))
 
         return template_text
 
@@ -525,7 +526,7 @@ class ChatStats(ChatGetter):
     def options_update(self, n_words: int, n_posts: int, top_3_number_of_words: bool, lemmatize: bool,
                        average_polls_stats: bool,
                        top_posts_stats: bool, top_posts_reactions: bool, top_comments_reactions: bool,
-                       word_cloud: bool, stop_words: list):
+                       longest_comment: bool, word_cloud: bool, stop_words: list):
         """
         Updates optional parameters.
         :param n_words: number of words in top words list
@@ -536,6 +537,7 @@ class ChatStats(ChatGetter):
         :param top_posts_stats: top posts checkbox position
         :param top_posts_reactions: top posts reactions checkbox position
         :param top_comments_reactions: top comments reactions checkbox position
+        :param longest_comment: longest comment checkbox position
         :param word_cloud: word cloud checkbox position
         :param stop_words: stopwords list
         :return: None
@@ -548,6 +550,7 @@ class ChatStats(ChatGetter):
         self.top_posts_stats = top_posts_stats
         self.top_posts_reactions = top_posts_reactions
         self.top_comments_reactions = top_comments_reactions
+        self.longest_comment = longest_comment
         self.word_cloud = word_cloud
         self.stop_words = stop_words
         self.cloud_words = None  # words for cloud words
