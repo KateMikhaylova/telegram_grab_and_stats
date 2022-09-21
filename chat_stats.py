@@ -462,7 +462,7 @@ class ChatStats(ChatGetter):
 
         return text
 
-    def text_longest_comment(self, comment: list):
+    def text_longest_comment(self, comment: list) -> str:
         """
         Creates text with the longest comment.
         :param comment: longest comment [comment link, comment length]
