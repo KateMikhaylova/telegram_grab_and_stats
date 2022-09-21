@@ -23,6 +23,8 @@ class ChatGetter:
         self.channels = None  # list of channels
         self.tg_chat = None  # selected channel
         self.date_range = None  # date interval [date_start, date_end]
+        self.top_posts_reactions = None
+        self.top_comments_reactions = None
 
     async def get_channel(self):
         """
@@ -155,7 +157,6 @@ class ChatGetter:
             comments_reactions_dict = {}
 
             while True:
-
                 messages = list(pyrogram_client.get_chat_history(chat_id=chat_id,
                                                                  limit=limit_msg,
                                                                  offset_id=offset_msg,

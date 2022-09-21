@@ -27,8 +27,6 @@ class ChatStats(ChatGetter):
         self.top_3_number_of_words = None
         self.stop_words = None
         self.top_posts_stats = None
-        self.top_posts_reactions = None
-        self.top_comments_reactions = None
         self.word_cloud = None
         self.average_polls_stats = None
         self.reaction_list = None
@@ -214,6 +212,27 @@ class ChatStats(ChatGetter):
                                                             else '😐' if proportion <= 0.5 and votes == max_votes
                                                             else '☹')]
         storage.put(polls_stats_dict)
+
+    def longest_comment(self, all_data: list, storage: Queue):
+        """
+        Gets the longest comment.
+        :param all_data: all data from chat
+        :param storage: container for returning value
+        """
+        message_id = None
+        max_length = 0
+
+        for message in all_data:
+            if type(message.from_id) == PeerUser and message.message:
+                http_pattern = re.compile(r'https?\S+\s?')
+                emoji_pattern = re.compile(r'[\U00010000-\U0010ffff]\s?')
+                text = http_pattern.sub(r'', message.message)
+                text = emoji_pattern.sub(r'', text)
+                if len(text) > max_length:
+                    max_length = len(text)
+                    message_id = message.id
+
+        storage.put([f'https://t.me/{self.tg_chat.username}/{message_id}', max_length])
 
     def text_head(self, week_stats: bool, month_stats: bool, year_stats: bool,
                   quarter_stats: bool, half_year_stats: bool) -> str:
@@ -442,6 +461,9 @@ class ChatStats(ChatGetter):
 
         return text
 
+    def text_longest_comment(self, comment):
+        return f'\n\nСамое большое количество символов ({comment[1]}) было у этого [комментария]({comment[0]}).'
+
     def stats_template(self, all_data: list, week_stats: bool, month_stats: bool, year_stats: bool,
                        quarter_stats: bool, half_year_stats: bool, loop) -> str:
         """
@@ -458,11 +480,13 @@ class ChatStats(ChatGetter):
         storage2 = Queue()
         storage3 = Queue()
         storage4 = Queue()
+        storage5 = Queue()
 
         threads = [Thread(target=self.top_3, args=[all_data, storage1, loop]),
                    Thread(target=self.top_words, args=[all_data, storage2, self.stop_words]),
                    Thread(target=self.polls_stats, args=[all_data, storage3]),
-                   Thread(target=self.top_viewed_forwarded_replied, args=[all_data, storage4])]  # creating threads
+                   Thread(target=self.top_viewed_forwarded_replied, args=[all_data, storage4]),
+                   Thread(target=self.longest_comment, args=[all_data, storage5])]  # creating threads
         [thread.start() for thread in threads]
         [thread.join() for thread in threads]  # waits until all threads are done
 
@@ -470,6 +494,7 @@ class ChatStats(ChatGetter):
         top_words = storage2.get()
         polls_stats = storage3.get()
         top_viewed_forwarded_replied = storage4.get()
+        longest_comment = storage5.get()
 
         template_text = (self.text_head(week_stats, month_stats, year_stats, quarter_stats, half_year_stats)
                          + self.text_top_3(top_3)
@@ -478,7 +503,8 @@ class ChatStats(ChatGetter):
                          + (self.text_top_viewed_forwarded_replied(top_viewed_forwarded_replied)
                             if self.top_posts_stats else '')
                          + (self.text_posts_reactions(self.reaction_list) if self.top_posts_reactions else '')
-                         + (self.text_comments_reactions(self.reaction_list) if self.top_comments_reactions else ''))
+                         + (self.text_comments_reactions(self.reaction_list) if self.top_comments_reactions else '')
+                         + self.text_longest_comment(longest_comment))
 
         return template_text
 
