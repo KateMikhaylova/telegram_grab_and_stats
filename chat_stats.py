@@ -28,6 +28,7 @@ class ChatStats(ChatGetter):
         self.stop_words = None
         self.top_posts_stats = None
         self.top_posts_reactions = None
+        self.message_streak = None
         self.top_comments_reactions = None
         self.word_cloud = None
         self.average_polls_stats = None
@@ -183,11 +184,11 @@ class ChatStats(ChatGetter):
 
         storage.put(result)
 
-    def message_streak(self, all_data: list):
+    def get_message_streak(self, all_data: list, storage: Queue):
         """
         Searches for longest message strike in chat
         :param all_data: all data from chat
-        :return:
+        :param storage: container for returning value
         """
 
         streak_dict = {'top_streak': 3,
@@ -239,7 +240,7 @@ class ChatStats(ChatGetter):
                         else:
                             counter_msg_id = f'https://t.me/{self.tg_chat.username}/{message.id}'
 
-        return streak_dict
+        storage.put(streak_dict)
 
     def polls_stats(self, all_data: list, storage: Queue):
         """
@@ -537,11 +538,13 @@ class ChatStats(ChatGetter):
         storage2 = Queue()
         storage3 = Queue()
         storage4 = Queue()
+        storage6 = Queue()
 
         threads = [Thread(target=self.top_3, args=[all_data, storage1, loop]),
                    Thread(target=self.top_words, args=[all_data, storage2, self.stop_words]),
                    Thread(target=self.polls_stats, args=[all_data, storage3]),
-                   Thread(target=self.top_viewed_forwarded_replied, args=[all_data, storage4])]  # creating threads
+                   Thread(target=self.top_viewed_forwarded_replied, args=[all_data, storage4]),
+                   Thread(target=self.get_message_streak, args=[all_data, storage6])]  # creating threads
         [thread.start() for thread in threads]
         [thread.join() for thread in threads]  # waits until all threads are done
 
@@ -549,6 +552,7 @@ class ChatStats(ChatGetter):
         top_words = storage2.get()
         polls_stats = storage3.get()
         top_viewed_forwarded_replied = storage4.get()
+        message_streak = storage6.get()
 
         template_text = (self.text_head(week_stats, month_stats, year_stats, quarter_stats, half_year_stats)
                          + self.text_top_3(top_3)
@@ -557,7 +561,8 @@ class ChatStats(ChatGetter):
                          + (self.text_top_viewed_forwarded_replied(top_viewed_forwarded_replied)
                             if self.top_posts_stats else '')
                          + (self.text_posts_reactions(self.reaction_list) if self.top_posts_reactions else '')
-                         + (self.text_comments_reactions(self.reaction_list) if self.top_comments_reactions else ''))
+                         + (self.text_comments_reactions(self.reaction_list) if self.top_comments_reactions else '')
+                         + (self.text_message_streak(message_streak) if self.message_streak else ''))
 
         return template_text
 
@@ -578,7 +583,7 @@ class ChatStats(ChatGetter):
     def options_update(self, n_words: int, n_posts: int, top_3_number_of_words: bool, lemmatize: bool,
                        average_polls_stats: bool,
                        top_posts_stats: bool, top_posts_reactions: bool, top_comments_reactions: bool,
-                       word_cloud: bool, stop_words: list):
+                       message_streak: bool, word_cloud: bool, stop_words: list):
         """
         Updates optional parameters.
         :param n_words: number of words in top words list
@@ -589,6 +594,7 @@ class ChatStats(ChatGetter):
         :param top_posts_stats: top posts checkbox position
         :param top_posts_reactions: top posts reactions checkbox position
         :param top_comments_reactions: top comments reactions checkbox position
+        :param message_streak: message streak checkbox position
         :param word_cloud: word cloud checkbox position
         :param stop_words: stopwords list
         :return: None
@@ -601,6 +607,7 @@ class ChatStats(ChatGetter):
         self.top_posts_stats = top_posts_stats
         self.top_posts_reactions = top_posts_reactions
         self.top_comments_reactions = top_comments_reactions
+        self.message_streak = message_streak
         self.word_cloud = word_cloud
         self.stop_words = stop_words
         self.cloud_words = None  # words for cloud words
