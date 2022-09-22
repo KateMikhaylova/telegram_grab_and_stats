@@ -101,7 +101,7 @@ class ChatStats(ChatGetter):
         all_stopwords.extend(add_stop_words)
 
         if not self.lemmatize:
-            tokens = [token.replace('ё', 'е') for token in tokens if token not in all_stopwords]
+            tokens = [token.replace('ё', 'е') for token in tokens if token.replace('ё', 'е') not in all_stopwords]
             without_lemmatize = Counter(tokens)
 
             if self.word_cloud:
