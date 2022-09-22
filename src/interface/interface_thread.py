@@ -3,8 +3,8 @@ from random import choice
 
 from telethon import TelegramClient
 from PyQt5 import QtCore
-from utils import get_text_from_box, write_to_file
-from chat_stats import ChatStats
+from src.utils import get_text_from_box, write_to_file
+from src.chat.chat_stats import ChatStats
 from pyrogram import Client
 
 
@@ -64,7 +64,7 @@ class WindowThread(QtCore.QThread):
 
         self.window.pushButton.setEnabled(True)
 
-        write_to_file('stop_words.txt', [text + '\n' for text in get_text_from_box(self.window.listWidget)])
+        write_to_file('src/stop_words.txt', [text + '\n' for text in get_text_from_box(self.window.listWidget)])
 
     def stop(self):
         self.is_running = False

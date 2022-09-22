@@ -9,13 +9,13 @@ from datetime import datetime
 from nltk.corpus import stopwords
 from collections import defaultdict, Counter
 from telethon.tl.types import PeerUser, MessageMediaPoll, PeerChannel, MessageService
-from chat_getter import ChatGetter
+from src.chat.chat_getter import ChatGetter
 from threading import Thread
 from queue import Queue
 from PIL import Image
 from numpy import array
 from wordcloud import WordCloud, ImageColorGenerator
-from utils import date_range
+from src.utils import date_range
 
 
 class ChatStats(ChatGetter):

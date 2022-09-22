@@ -1,9 +1,9 @@
 from PyQt5 import QtCore
-from chat_stats import ChatStats
-from interface_thread import WindowThread
+from src.chat.chat_stats import ChatStats
+from src.interface.interface_thread import WindowThread
 from telethon import TelegramClient
 from pyrogram import Client
-from utils import *
+from src.utils import *
 import os
 
 
@@ -312,7 +312,7 @@ class Window(object):
         self.listWidget.setObjectName("listWidget")
 
         self.listWidget.addItems(
-            read_from_file('stop_words.txt'))  # reads stopwords from file and adds to stopwords box
+            read_from_file('src/stop_words.txt'))  # reads stopwords from file and adds to stopwords box
 
         self.verticalLayout_4.addWidget(self.listWidget)
         self.pushButton_3 = QtWidgets.QPushButton(window)

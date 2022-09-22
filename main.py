@@ -2,14 +2,14 @@ import sys
 import configparser
 import asyncio
 
-from interface import Window
+from src.interface.interface import Window
 from PyQt5 import QtWidgets
 from telethon import TelegramClient
 from pyrogram import Client
 
 
 config = configparser.ConfigParser()
-config.read('settings.ini')
+config.read('keys.ini')
 phone = config['Telegram']['phone']
 api_id = config['Telegram']['api_id']
 api_hash = config['Telegram']['api_hash']
