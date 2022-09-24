@@ -1,4 +1,3 @@
-from datetime import timedelta
 from PyQt5.QtCore import pyqtBoundSignal
 from telethon import TelegramClient
 from telethon.tl.types import InputPeerEmpty, Channel
@@ -54,7 +53,7 @@ class ChatGetter:
         broadcast_channel = self.tg_chat.broadcast
         offset_msg = 0
         limit_msg = 100
-        date_offset = self.date_range[1] + timedelta(days=1)
+        date_offset = self.date_range[1] + datetime.timedelta(days=1)
 
         previous_date = self.date_range[1]
         progress_bar_value = 0
@@ -150,7 +149,7 @@ class ChatGetter:
 
             offset_msg = 0
             limit_msg = 100
-            date_offset = self.date_range[1] + timedelta(days=1)
+            date_offset = self.date_range[1] + datetime.timedelta(days=1)
             date_offset = datetime.datetime.combine(date_offset, datetime.time())
 
             posts_reactions_dict = {}
